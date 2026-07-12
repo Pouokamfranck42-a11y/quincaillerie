@@ -1,0 +1,34 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Category;
+use App\Services\Ai\ClaudeService;
+use Illuminate\Http\Request;
+
+class ProductDescriptionController extends Controller
+{
+    public function generate(Request $request, ClaudeService $claude)
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'brand' => ['nullable', 'string', 'max:255'],
+            'category_id' => ['nullable', 'exists:categories,id'],
+        ]);
+
+        $category = isset($data['category_id']) ? Category::find($data['category_id'])?->name : null;
+
+        $prompt = 'Rédige une description commerciale concise (2 à 3 phrases) en français pour ce produit de quincaillerie, '
+            ."sans superlatifs excessifs, mentionnant l'usage typique.\n\n"
+            ."Nom : {$data['name']}\n"
+            .(filled($data['brand'] ?? null) ? "Marque : {$data['brand']}\n" : '')
+            .($category ? "Catégorie : {$category}\n" : '');
+
+        $description = $claude->generateText(
+            "Tu rédiges des descriptions commerciales courtes et factuelles pour le catalogue d'une quincaillerie.",
+            $prompt,
+        );
+
+        return response()->json(['description' => $description]);
+    }
+}

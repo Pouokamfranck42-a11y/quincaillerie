@@ -1,0 +1,42 @@
+<x-layout :title="'Vente #'.$sale->id">
+    <div class="page-head">
+        <div>
+            <h1>Vente #{{ $sale->id }}</h1>
+            <p>{{ $sale->created_at->format('d/m/Y H:i') }} · {{ $sale->user->name }} · {{ $sale->customer?->name ?? 'Client de passage' }}</p>
+        </div>
+        <a href="{{ route('sales.print', $sale) }}" class="btn" target="_blank">Imprimer le bon de livraison</a>
+    </div>
+
+    <div class="card">
+        <div class="tbl-wrap">
+            <table>
+                <thead><tr><th>Produit</th><th class="num">Quantité</th><th class="num">Prix</th><th class="num">Total</th><th class="num">Retourné</th><th></th></tr></thead>
+                <tbody>
+                    @foreach ($sale->lines as $line)
+                        <tr>
+                            <td>{{ $line->product->name }}</td>
+                            <td class="num">{{ rtrim(rtrim(number_format($line->quantity, 2, ',', ' '), '0'), ',') }}</td>
+                            <td class="num">{{ number_format($line->unit_price, 0, ',', ' ') }}</td>
+                            <td class="num">{{ number_format($line->lineTotal(), 0, ',', ' ') }}</td>
+                            <td class="num">{{ $line->returned_quantity > 0 ? rtrim(rtrim(number_format($line->returned_quantity, 2, ',', ' '), '0'), ',') : '—' }}</td>
+                            <td>
+                                @if ($line->returnableQuantity() > 0)
+                                    <form method="POST" action="{{ route('sales.return-line', [$sale, $line]) }}" class="flex" onsubmit="return confirm('Confirmer le retour ? Le stock sera réintégré.');">
+                                        @csrf
+                                        <input type="number" step="0.01" min="0.01" max="{{ $line->returnableQuantity() }}" name="quantity" placeholder="Qté" style="width:80px" required>
+                                        <button type="submit" class="btn btn-sm">Retourner</button>
+                                    </form>
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        <div class="cart-totals">
+            <div class="row"><span>Sous-total</span><span>{{ number_format($sale->subtotal, 0, ',', ' ') }}</span></div>
+            <div class="row"><span>TVA</span><span>{{ number_format($sale->tax_amount, 0, ',', ' ') }}</span></div>
+            <div class="row total"><span>Total</span><span>{{ number_format($sale->total, 0, ',', ' ') }} FCFA</span></div>
+        </div>
+    </div>
+</x-layout>

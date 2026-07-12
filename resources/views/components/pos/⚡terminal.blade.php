@@ -1,0 +1,310 @@
+<?php
+
+use App\Models\CashRegisterSession;
+use App\Models\Customer;
+use App\Models\Product;
+use App\Models\ProductAssociation;
+use App\Models\Sale;
+use Livewire\Attributes\Computed;
+use Livewire\Component;
+
+new class extends Component
+{
+    public int $sessionId;
+
+    public string $search = '';
+
+    /** @var array<int, float> quantité par product_id */
+    public array $cart = [];
+
+    public ?int $customerId = null;
+
+    public string $paymentMethod = 'especes';
+
+    public float $taxRate = 18;
+
+    public ?int $lastAddedProductId = null;
+
+    public function mount(CashRegisterSession $session): void
+    {
+        $this->sessionId = $session->id;
+    }
+
+    #[Computed]
+    public function results()
+    {
+        if (mb_strlen(trim($this->search)) < 2) {
+            return collect();
+        }
+
+        return Product::query()
+            ->where('active', true)
+            ->where(function ($q) {
+                $q->where('name', 'ilike', "%{$this->search}%")
+                    ->orWhere('reference', 'ilike', "%{$this->search}%")
+                    ->orWhere('barcode', $this->search);
+            })
+            ->withSum('stockMovements as stock_quantity', 'quantity')
+            ->limit(12)
+            ->get();
+    }
+
+    #[Computed]
+    public function customers()
+    {
+        return Customer::orderBy('name')->get();
+    }
+
+    #[Computed]
+    public function selectedCustomer(): ?Customer
+    {
+        return $this->customerId ? $this->customers->firstWhere('id', $this->customerId) : null;
+    }
+
+    /** Lignes du panier enrichies (nom, prix appliqué selon le client, sous-total) — recalculées à chaque rendu. */
+    #[Computed]
+    public function cartLines()
+    {
+        if (empty($this->cart)) {
+            return collect();
+        }
+
+        $products = Product::whereIn('id', array_keys($this->cart))->get()->keyBy('id');
+        $customer = $this->selectedCustomer();
+
+        return collect($this->cart)->map(function ($quantity, $productId) use ($products, $customer) {
+            $product = $products->get($productId);
+            $lot = $product->tracks_lots ? $product->nextFefoLot() : null;
+
+            return [
+                'product_id' => $productId,
+                'name' => $product->name,
+                'unit' => $product->unit,
+                'price' => $product->priceFor($customer),
+                'quantity' => $quantity,
+                'lot' => $lot,
+            ];
+        });
+    }
+
+    public function addToCart(int $productId): void
+    {
+        $this->cart[$productId] = ($this->cart[$productId] ?? 0) + 1;
+        $this->search = '';
+        $this->lastAddedProductId = $productId;
+    }
+
+    /** Suggestions de ventes croisées pour le dernier produit ajouté, hors produits déjà dans le panier. */
+    #[Computed]
+    public function crossSellSuggestions()
+    {
+        if (! $this->lastAddedProductId) {
+            return collect();
+        }
+
+        return ProductAssociation::where('product_id', $this->lastAddedProductId)
+            ->whereNotIn('associated_product_id', array_keys($this->cart))
+            ->orderByDesc('co_occurrence_count')
+            ->with('associatedProduct')
+            ->limit(4)
+            ->get()
+            ->pluck('associatedProduct')
+            ->filter(fn (?Product $p) => $p !== null && $p->active);
+    }
+
+    public function updateQuantity(int $productId, float $quantity): void
+    {
+        if ($quantity <= 0) {
+            $this->removeFromCart($productId);
+
+            return;
+        }
+
+        if (isset($this->cart[$productId])) {
+            $this->cart[$productId] = $quantity;
+        }
+    }
+
+    public function removeFromCart(int $productId): void
+    {
+        unset($this->cart[$productId]);
+    }
+
+    #[Computed]
+    public function subtotal(): float
+    {
+        return (float) $this->cartLines()->sum(fn ($line) => $line['price'] * $line['quantity']);
+    }
+
+    #[Computed]
+    public function taxAmount(): float
+    {
+        return round($this->subtotal() * ($this->taxRate / 100), 2);
+    }
+
+    #[Computed]
+    public function total(): float
+    {
+        return $this->subtotal() + $this->taxAmount();
+    }
+
+    public function checkout(): void
+    {
+        if (empty($this->cart)) {
+            $this->addError('cart', 'Le panier est vide.');
+
+            return;
+        }
+
+        $session = CashRegisterSession::findOrFail($this->sessionId);
+
+        $cartItems = collect($this->cart)->map(fn ($quantity, $productId) => [
+            'product' => Product::findOrFail($productId),
+            'quantity' => $quantity,
+        ])->values()->all();
+
+        $sale = Sale::checkout(
+            $cartItems,
+            $session,
+            auth()->id(),
+            $this->customerId,
+            $this->paymentMethod,
+            $this->taxRate,
+        );
+
+        $this->cart = [];
+        $this->customerId = null;
+        $this->paymentMethod = 'especes';
+        session()->flash('success', 'Vente #'.$sale->id.' encaissée : '.number_format($sale->total, 0, ',', ' ').' FCFA.');
+        $this->redirectRoute('pos.index');
+    }
+};
+?>
+
+<div class="pos-grid">
+    <div>
+        <div class="pos-search">
+            <input
+                type="search"
+                id="pos-search-input"
+                wire:model.live.debounce.250ms="search"
+                placeholder="Rechercher un produit par nom, référence ou code-barres…"
+                autofocus
+            >
+            <div wire:ignore>
+                <x-barcode-scan target="pos-search-input" />
+            </div>
+        </div>
+
+        <div class="pos-results">
+            @forelse ($this->results as $product)
+                @php $stock = (float) ($product->stock_quantity ?? 0); @endphp
+                <div class="pos-result" wire:click="addToCart({{ $product->id }})">
+                    <div>
+                        <div class="name">{{ $product->name }}</div>
+                        <div class="meta">
+                            {{ $product->reference }} · {{ number_format($product->priceFor($this->selectedCustomer()), 0, ',', ' ') }} FCFA / {{ $product->unit }}
+                            @if ($product->location) · 📍 {{ $product->location }} @endif
+                            @if ($product->tracks_lots)
+                                @php $fefo = $product->nextFefoLot(); @endphp
+                                · <span class="{{ $fefo?->expiresWithin(30) ? 'badge badge-warn' : 'muted' }}">{{ $fefo ? 'lot '.$fefo->lot_number.' — '.$fefo->expiry_date?->format('d/m/Y') : 'aucun lot disponible' }}</span>
+                            @endif
+                        </div>
+                    </div>
+                    <div>
+                        @if ($stock <= (float) $product->low_stock_threshold)
+                            <span class="badge badge-crit">stock {{ rtrim(rtrim(number_format($stock, 2, ',', ' '), '0'), ',') }}</span>
+                        @else
+                            <span class="badge badge-good">stock {{ rtrim(rtrim(number_format($stock, 2, ',', ' '), '0'), ',') }}</span>
+                        @endif
+                    </div>
+                </div>
+            @empty
+                @if (mb_strlen(trim($search)) >= 2)
+                    <p class="muted">Aucun produit trouvé.</p>
+                @endif
+            @endforelse
+        </div>
+    </div>
+
+    <div class="pos-cart">
+        <h3>Panier</h3>
+
+        @error('cart') <div class="alert alert-crit">{{ $message }}</div> @enderror
+        @error('credit') <div class="alert alert-crit">{{ $message }}</div> @enderror
+
+        @forelse ($this->cartLines() as $line)
+            <div class="cart-line">
+                <span class="name">
+                    {{ $line['name'] }}
+                    @if ($line['lot'])
+                        <br><span class="muted" style="font-size:11px">lot {{ $line['lot']->lot_number }}{{ $line['lot']->expiry_date ? ' · péremption ' . $line['lot']->expiry_date->format('d/m/Y') : '' }}</span>
+                    @endif
+                </span>
+                <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value="{{ $line['quantity'] }}"
+                    wire:change="updateQuantity({{ $line['product_id'] }}, $event.target.value)"
+                >
+                <span class="mono">{{ number_format($line['price'] * $line['quantity'], 0, ',', ' ') }}</span>
+                <button type="button" class="btn btn-sm btn-ghost" wire:click="removeFromCart({{ $line['product_id'] }})">✕</button>
+            </div>
+        @empty
+            <p class="muted">Panier vide — recherchez un article à gauche.</p>
+        @endforelse
+
+        @if ($this->crossSellSuggestions()->isNotEmpty())
+            <div style="margin-top:10px">
+                <div class="muted" style="font-size:12px; margin-bottom:6px">Souvent acheté avec :</div>
+                <div class="flex" style="flex-wrap:wrap; gap:6px">
+                    @foreach ($this->crossSellSuggestions() as $suggestion)
+                        <button type="button" class="btn btn-sm btn-ghost" style="border:1px solid var(--steel-200)" wire:click="addToCart({{ $suggestion->id }})">+ {{ $suggestion->name }}</button>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
+        <div class="field" style="margin-top:14px">
+            <label for="customerId">Client (optionnel)</label>
+            <select id="customerId" wire:model.live="customerId">
+                <option value="">Client de passage</option>
+                @foreach ($this->customers as $customer)
+                    <option value="{{ $customer->id }}">{{ $customer->name }} @if($customer->type === 'professionnel') (pro) @endif</option>
+                @endforeach
+            </select>
+            @if ($this->selectedCustomer()?->type === 'professionnel')
+                <div class="hint">Tarif pro appliqué · crédit disponible : {{ number_format($this->selectedCustomer()->availableCredit(), 0, ',', ' ') }} FCFA</div>
+            @endif
+        </div>
+
+        <div class="field">
+            <label for="paymentMethod">Paiement</label>
+            <select id="paymentMethod" wire:model="paymentMethod">
+                <option value="especes">Espèces</option>
+                <option value="carte">Carte</option>
+                <option value="mobile">Mobile money</option>
+                @if ($this->selectedCustomer()?->type === 'professionnel' && $this->selectedCustomer()->credit_limit > 0)
+                    <option value="credit">À crédit</option>
+                @endif
+            </select>
+        </div>
+
+        <div class="cart-totals">
+            <div class="row"><span>Sous-total</span><span>{{ number_format($this->subtotal(), 0, ',', ' ') }}</span></div>
+            <div class="row"><span>TVA ({{ rtrim(rtrim(number_format($taxRate, 2), '0'), '.') }}%)</span><span>{{ number_format($this->taxAmount(), 0, ',', ' ') }}</span></div>
+            <div class="row total"><span>Total</span><span>{{ number_format($this->total(), 0, ',', ' ') }} FCFA</span></div>
+        </div>
+
+        <button
+            type="button"
+            class="btn btn-primary"
+            style="width:100%; margin-top:14px"
+            wire:click="checkout"
+            @disabled(empty($cart))
+        >
+            Encaisser
+        </button>
+    </div>
+</div>
