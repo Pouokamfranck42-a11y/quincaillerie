@@ -3,7 +3,7 @@
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Services\Ai\ChatbotTools;
-use App\Services\Ai\ClaudeService;
+use App\Services\Ai\GeminiService;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -45,7 +45,7 @@ new class extends Component
         $this->conversationId = $id;
     }
 
-    public function send(ClaudeService $claude): void
+    public function send(GeminiService $gemini): void
     {
         $text = trim($this->input);
 
@@ -79,7 +79,7 @@ new class extends Component
             ."n'affirme jamais un stock ou un prix sans l'avoir vérifié via un outil. Tu donnes aussi des conseils d'usage (ex. quel produit pour quel besoin) "
             .'en t\'appuyant sur le catalogue réel trouvé via l\'outil de recherche.';
 
-        $reply = $claude->chat($system, $history, ChatbotTools::definitions());
+        $reply = $gemini->chat($system, $history, ChatbotTools::definitions());
 
         ChatMessage::create([
             'chat_conversation_id' => $this->conversationId,
@@ -94,13 +94,13 @@ new class extends Component
 
 <div class="chat-grid">
     <div class="chat-list">
-        <button type="button" class="btn btn-sm" style="width:100%; margin-bottom:8px" wire:click="newConversation">+ Nouvelle conversation</button>
+        <button type="button" class="btn btn-sm btn-primary" style="width:100%; margin-bottom:8px" wire:click="newConversation"><i class="bi bi-plus-lg"></i> Nouvelle conversation</button>
         @foreach ($this->conversations as $conversation)
             <div
                 class="chat-list-item {{ $conversation->id === $conversationId ? 'active' : '' }}"
                 wire:click="selectConversation({{ $conversation->id }})"
             >
-                {{ $conversation->title ?? 'Conversation #'.$conversation->id }}
+                <i class="bi bi-chat-square-text me-1"></i> {{ $conversation->title ?? 'Conversation #'.$conversation->id }}
             </div>
         @endforeach
     </div>
@@ -108,11 +108,13 @@ new class extends Component
     <div class="chat-thread">
         <div class="chat-messages" wire:loading.class="muted" wire:target="send">
             @forelse ($this->messages as $message)
-                <div class="chat-bubble chat-bubble-{{ $message->role }}">{{ $message->content }}</div>
+                <div class="chat-bubble chat-bubble-{{ $message->role }}">
+                    <i class="bi {{ $message->role === 'assistant' ? 'bi-robot' : 'bi-person-circle' }} me-1"></i>{{ $message->content }}
+                </div>
             @empty
-                <p class="chat-empty">Pose une question sur le stock, les prix, ou demande un conseil d'usage — l'assistant s'appuie sur le catalogue réel.</p>
+                <p class="chat-empty"><i class="bi bi-robot" style="font-size:28px; display:block; margin-bottom:8px;"></i>Pose une question sur le stock, les prix, ou demande un conseil d'usage — l'assistant s'appuie sur le catalogue réel.</p>
             @endforelse
-            <div wire:loading wire:target="send" class="chat-bubble chat-bubble-assistant muted">L'assistant réfléchit…</div>
+            <div wire:loading wire:target="send" class="chat-bubble chat-bubble-assistant muted"><i class="bi bi-three-dots"></i> L'assistant réfléchit…</div>
         </div>
 
         <form wire:submit.prevent="send" class="chat-input-row">
@@ -124,7 +126,7 @@ new class extends Component
                 wire:loading.attr="disabled"
                 wire:target="send"
             >
-            <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="send">Envoyer</button>
+            <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="send"><i class="bi bi-send-fill"></i> Envoyer</button>
         </form>
     </div>
 </div>

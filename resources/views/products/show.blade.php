@@ -9,7 +9,7 @@
                 <p class="mono">{{ $product->reference }} @if($product->barcode) · {{ $product->barcode }} @endif</p>
                 <div class="flex" style="margin-top:8px; flex-wrap:wrap;">
                     @if ($product->location)
-                        <span class="badge badge-neutral">📍 {{ $product->location }}</span>
+                        <span class="badge badge-neutral"><i class="bi bi-geo-alt"></i> {{ $product->location }}</span>
                     @endif
                     @if ($product->family)
                         <span class="badge badge-neutral">{{ $product->family->name }}</span>
@@ -24,8 +24,8 @@
             </div>
         </div>
         <div class="flex">
-            <a href="{{ route('products.label', $product) }}" class="btn" target="_blank">Étiquette</a>
-            <a href="{{ route('products.edit', $product) }}" class="btn">Modifier</a>
+            <a href="{{ route('products.label', $product) }}" class="btn" target="_blank"><i class="bi bi-upc-scan"></i> Étiquette</a>
+            <a href="{{ route('products.edit', $product) }}" class="btn btn-primary"><i class="bi bi-pencil-square"></i> Modifier</a>
         </div>
     </div>
 
@@ -72,14 +72,14 @@
     </div>
 
     @if ($pricing['suggestion'])
-        <div class="alert alert-warn" style="background:var(--warn-soft); color:var(--warn); border:1px solid var(--warn)">
-            💡 {{ $pricing['suggestion'] }}
+        <div class="alert" style="background:var(--warn-soft); color:var(--warn-dark); border-color:#FDE4B0; border-left-color:var(--warn)">
+            <i class="bi bi-lightbulb-fill"></i> <span>{{ $pricing['suggestion'] }}</span>
         </div>
     @endif
 
     @if ($product->supplier || $product->alternateSuppliers->isNotEmpty())
         <div class="card">
-            <div class="card-head"><h2>Fournisseurs</h2></div>
+            <div class="card-head"><h2><i class="bi bi-truck"></i> Fournisseurs</h2></div>
             <div class="tbl-wrap">
                 <table>
                     <thead><tr><th>Fournisseur</th><th>Réf. fournisseur</th><th class="num">Prix d'achat</th><th></th></tr></thead>
@@ -108,7 +108,7 @@
 
     @if ($associations->isNotEmpty())
         <div class="card">
-            <div class="card-head"><h2>Produits associés</h2></div>
+            <div class="card-head"><h2><i class="bi bi-link-45deg"></i> Produits associés</h2></div>
             <p class="muted mt-0" style="margin-bottom:10px">Souvent achetés avec ce produit.</p>
             <div class="flex" style="flex-wrap:wrap; gap:8px">
                 @foreach ($associations as $assoc)
@@ -120,7 +120,7 @@
 
     @if ($product->tracks_lots)
         <div class="card">
-            <div class="card-head"><h2>Lots</h2></div>
+            <div class="card-head"><h2><i class="bi bi-boxes"></i> Lots</h2></div>
             <div class="tbl-wrap">
                 <table>
                     <thead><tr><th>N° de lot</th><th class="num">Quantité</th><th>Péremption</th><th></th></tr></thead>
@@ -146,7 +146,7 @@
     @endif
 
     <div class="card">
-        <div class="card-head"><h2>Derniers mouvements de stock</h2></div>
+        <div class="card-head"><h2><i class="bi bi-arrow-left-right"></i> Derniers mouvements de stock</h2></div>
         <div class="tbl-wrap">
             <table>
                 <thead><tr><th>Date</th><th>Type</th><th class="num">Quantité</th><th>Motif</th></tr></thead>

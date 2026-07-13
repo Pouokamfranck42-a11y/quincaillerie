@@ -1,10 +1,10 @@
 <x-layout title="Inventaires">
     <div class="page-head">
         <div>
-            <h1>Inventaires</h1>
+            <h1><i class="bi bi-clipboard-check text-primary"></i> Inventaires</h1>
             <p>Comptages complets ou tournants, écarts et régularisations.</p>
         </div>
-        <a href="{{ route('inventory-counts.create') }}" class="btn btn-primary">+ Nouveau comptage</a>
+        <a href="{{ route('inventory-counts.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouveau comptage</a>
     </div>
 
     <div class="tbl-wrap">
@@ -24,10 +24,10 @@
                             @endif
                         </td>
                         <td class="muted">{{ $count->created_at->format('d/m/Y') }}</td>
-                        <td><a href="{{ route('inventory-counts.show', $count) }}" class="btn btn-sm">Voir</a></td>
+                        <td><a href="{{ route('inventory-counts.show', $count) }}" class="btn btn-sm"><i class="bi bi-eye"></i> Voir</a></td>
                     </tr>
                 @empty
-                    <tr class="empty-row"><td colspan="8">Aucun comptage pour l'instant.</td></tr>
+                    <tr class="empty-row"><td colspan="8"><i class="bi bi-inbox"></i> Aucun comptage pour l'instant.</td></tr>
                 @endforelse
             </tbody>
         </table>

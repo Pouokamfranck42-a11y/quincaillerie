@@ -1,20 +1,23 @@
 <x-layout title="Produits">
     <div class="page-head">
         <div>
-            <h1>Produits</h1>
+            <h1><i class="bi bi-box-seam text-primary"></i> Produits</h1>
             <p>Catalogue, prix et stock courant.</p>
         </div>
         <div class="flex">
-            <button type="button" class="btn" id="recognize-photo-btn">📷 Reconnaître via photo</button>
-            <a href="{{ route('products.create') }}" class="btn btn-primary">+ Nouveau produit</a>
+            <button type="button" class="btn" id="recognize-photo-btn"><i class="bi bi-camera"></i> Reconnaître via photo</button>
+            <a href="{{ route('products.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouveau produit</a>
         </div>
     </div>
 
     <input type="file" id="recognize-photo-input" accept="image/*" style="display:none">
     <div id="recognize-results" class="card" style="display:none; margin-bottom:16px"></div>
 
-    <form method="GET" class="field" style="max-width:360px">
-        <input type="search" name="q" value="{{ request('q') }}" placeholder="Rechercher par nom, référence, code-barres…">
+    <form method="GET" class="field">
+        <div class="input-group" style="max-width:360px">
+            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+            <input type="search" name="q" class="border-start-0 ps-0" value="{{ request('q') }}" placeholder="Rechercher par nom, référence, code-barres…">
+        </div>
     </form>
 
     <div class="tbl-wrap">
@@ -49,12 +52,12 @@
                         </td>
                         <td>
                             <div class="table-actions">
-                                <a href="{{ route('products.edit', $product) }}" class="btn btn-sm">Modifier</a>
+                                <a href="{{ route('products.edit', $product) }}" class="btn btn-sm"><i class="bi bi-pencil-square"></i> Modifier</a>
                             </div>
                         </td>
                     </tr>
                 @empty
-                    <tr class="empty-row"><td colspan="8">Aucun produit trouvé.</td></tr>
+                    <tr class="empty-row"><td colspan="8"><i class="bi bi-inbox"></i> Aucun produit trouvé.</td></tr>
                 @endforelse
             </tbody>
         </table>

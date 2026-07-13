@@ -1,5 +1,5 @@
 <x-layout title="Nouveau mouvement de stock">
-    <div class="page-head"><h1>Nouveau mouvement de stock</h1></div>
+    <div class="page-head"><h1><i class="bi bi-plus-lg text-primary"></i> Nouveau mouvement de stock</h1></div>
 
     <div class="card" style="max-width:560px" x-data="{ type: 'entree', productId: '', lotTrackedIds: @json($products->where('tracks_lots', true)->pluck('id')) }">
         <form method="POST" action="{{ route('stock-movements.store') }}">
@@ -74,7 +74,7 @@
             </div>
 
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Enregistrer</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Enregistrer</button>
                 <a href="{{ route('stock-movements.index') }}" class="btn btn-ghost">Annuler</a>
             </div>
         </form>

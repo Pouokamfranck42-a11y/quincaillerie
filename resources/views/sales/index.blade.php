@@ -1,7 +1,7 @@
 <x-layout title="Ventes">
     <div class="page-head">
         <div>
-            <h1>Ventes</h1>
+            <h1><i class="bi bi-receipt text-primary"></i> Ventes</h1>
             <p>Historique des tickets de caisse.</p>
         </div>
     </div>
@@ -23,10 +23,10 @@
                             @else <span class="badge badge-good">{{ $sale->payment_method }}</span>
                             @endif
                         </td>
-                        <td><a href="{{ route('sales.show', $sale) }}" class="btn btn-sm">Voir</a></td>
+                        <td><a href="{{ route('sales.show', $sale) }}" class="btn btn-sm"><i class="bi bi-eye"></i> Voir</a></td>
                     </tr>
                 @empty
-                    <tr class="empty-row"><td colspan="8">Aucune vente enregistrée.</td></tr>
+                    <tr class="empty-row"><td colspan="8"><i class="bi bi-inbox"></i> Aucune vente enregistrée.</td></tr>
                 @endforelse
             </tbody>
         </table>

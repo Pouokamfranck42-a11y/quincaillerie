@@ -1,10 +1,10 @@
 <x-layout title="Devis">
     <div class="page-head">
         <div>
-            <h1>Devis</h1>
+            <h1><i class="bi bi-file-earmark-text text-primary"></i> Devis</h1>
             <p>Devis / proforma, convertibles en vente d'un clic.</p>
         </div>
-        <a href="{{ route('quotes.create') }}" class="btn btn-primary">+ Nouveau devis</a>
+        <a href="{{ route('quotes.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouveau devis</a>
     </div>
 
     <div class="tbl-wrap">
@@ -25,10 +25,10 @@
                             @endif
                         </td>
                         <td class="muted">{{ $quote->created_at->format('d/m/Y') }}</td>
-                        <td><a href="{{ route('quotes.show', $quote) }}" class="btn btn-sm">Voir</a></td>
+                        <td><a href="{{ route('quotes.show', $quote) }}" class="btn btn-sm"><i class="bi bi-eye"></i> Voir</a></td>
                     </tr>
                 @empty
-                    <tr class="empty-row"><td colspan="7">Aucun devis pour l'instant.</td></tr>
+                    <tr class="empty-row"><td colspan="7"><i class="bi bi-inbox"></i> Aucun devis pour l'instant.</td></tr>
                 @endforelse
             </tbody>
         </table>

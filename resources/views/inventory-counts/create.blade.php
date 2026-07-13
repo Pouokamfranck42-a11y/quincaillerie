@@ -1,5 +1,5 @@
 <x-layout title="Nouveau comptage">
-    <div class="page-head"><h1>Nouveau comptage d'inventaire</h1></div>
+    <div class="page-head"><h1><i class="bi bi-plus-lg text-primary"></i> Nouveau comptage d'inventaire</h1></div>
 
     <div class="card" style="max-width:560px" x-data="{ type: 'tournant' }">
         <form method="POST" action="{{ route('inventory-counts.store') }}">
@@ -37,7 +37,7 @@
             </div>
 
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Créer le comptage</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Créer le comptage</button>
                 <a href="{{ route('inventory-counts.index') }}" class="btn btn-ghost">Annuler</a>
             </div>
         </form>

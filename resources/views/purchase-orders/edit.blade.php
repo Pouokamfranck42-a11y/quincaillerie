@@ -1,5 +1,5 @@
 <x-layout :title="'Modifier la commande #'.$purchaseOrder->id">
-    <div class="page-head"><h1>Modifier la commande #{{ $purchaseOrder->id }}</h1></div>
+    <div class="page-head"><h1><i class="bi bi-pencil-square text-primary"></i> Modifier la commande #{{ $purchaseOrder->id }}</h1></div>
 
     <div
         class="card"
@@ -43,7 +43,7 @@
             </div>
 
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Enregistrer les modifications</button>
                 <a href="{{ route('purchase-orders.show', $purchaseOrder) }}" class="btn btn-ghost">Annuler</a>
             </div>
         </form>

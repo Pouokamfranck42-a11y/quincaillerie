@@ -1,15 +1,15 @@
 <x-layout :title="'Commande #'.$purchaseOrder->id">
     <div class="page-head">
         <div>
-            <h1>Commande fournisseur #{{ $purchaseOrder->id }}</h1>
+            <h1><i class="bi bi-cart3 text-primary"></i> Commande fournisseur #{{ $purchaseOrder->id }}</h1>
             <p>{{ $purchaseOrder->supplier->name }} · créée le {{ $purchaseOrder->created_at->format('d/m/Y') }} par {{ $purchaseOrder->user?->name ?? '—' }}</p>
         </div>
         @if ($purchaseOrder->status === 'draft')
             <div class="flex">
-                <a href="{{ route('purchase-orders.edit', $purchaseOrder) }}" class="btn">Modifier les lignes</a>
+                <a href="{{ route('purchase-orders.edit', $purchaseOrder) }}" class="btn"><i class="bi bi-pencil-square"></i> Modifier les lignes</a>
                 <form method="POST" action="{{ route('purchase-orders.place', $purchaseOrder) }}">
                     @csrf
-                    <button type="submit" class="btn btn-primary">Passer la commande</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-send-check"></i> Passer la commande</button>
                 </form>
             </div>
         @elseif ($purchaseOrder->status === 'received')
@@ -72,26 +72,32 @@
         @endif
 
         @if (in_array($purchaseOrder->status, ['ordered', 'partiellement_recu']))
-            <form id="receive-form" method="POST" action="{{ route('purchase-orders.receive', $purchaseOrder) }}" onsubmit="return confirm('Confirmer la réception de ces quantités ? Le stock sera mis à jour.');">
+            <form id="receive-form" method="POST" action="{{ route('purchase-orders.receive', $purchaseOrder) }}">
                 @csrf
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Réceptionner les quantités saisies</button>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#confirm-receive"><i class="bi bi-box-arrow-in-down"></i> Réceptionner les quantités saisies</button>
                 </div>
             </form>
+            <x-confirm-modal id="confirm-receive" title="Confirmer la réception ?" body="Le stock sera mis à jour avec les quantités saisies.">
+                <button type="submit" form="receive-form" class="btn btn-primary"><i class="bi bi-check-lg"></i> Confirmer</button>
+            </x-confirm-modal>
         @endif
     </div>
 
     @if ($purchaseOrder->lines->contains(fn ($line) => $line->returnableQuantity() > 0))
         <div class="card">
-            <div class="card-head"><h2>Retour fournisseur</h2></div>
+            <div class="card-head"><h2><i class="bi bi-arrow-return-left"></i> Retour fournisseur</h2></div>
             @foreach ($purchaseOrder->lines as $line)
                 @if ($line->returnableQuantity() > 0)
-                    <form method="POST" action="{{ route('purchase-orders.return-line', [$purchaseOrder, $line]) }}" class="flex" style="margin-bottom:8px" onsubmit="return confirm('Confirmer le retour au fournisseur ? Le stock sera sorti.');">
+                    <form method="POST" action="{{ route('purchase-orders.return-line', [$purchaseOrder, $line]) }}" id="return-form-{{ $line->id }}" class="flex" style="margin-bottom:8px">
                         @csrf
                         <span style="flex:1">{{ $line->product->name }} <span class="muted">(reçu : {{ rtrim(rtrim(number_format($line->returnableQuantity(), 2, ',', ' '), '0'), ',') }})</span></span>
                         <input type="number" step="0.01" min="0.01" max="{{ $line->returnableQuantity() }}" name="quantity" placeholder="Qté à retourner" style="width:140px" required>
-                        <button type="submit" class="btn btn-sm">Retourner</button>
+                        <button type="button" class="btn btn-sm" data-bs-toggle="modal" data-bs-target="#confirm-return-{{ $line->id }}"><i class="bi bi-arrow-return-left"></i> Retourner</button>
                     </form>
+                    <x-confirm-modal id="confirm-return-{{ $line->id }}" title="Confirmer le retour fournisseur ?" body="Le stock sera sorti pour la quantité saisie.">
+                        <button type="submit" form="return-form-{{ $line->id }}" class="btn btn-primary"><i class="bi bi-check-lg"></i> Confirmer</button>
+                    </x-confirm-modal>
                 @endif
             @endforeach
         </div>

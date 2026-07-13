@@ -1,8 +1,8 @@
 <x-layout title="Vérifier la facture importée">
-    <div class="page-head"><h1>Vérifier la facture importée</h1></div>
+    <div class="page-head"><h1><i class="bi bi-file-earmark-check text-primary"></i> Vérifier la facture importée</h1></div>
 
     @if (! $supplierGuessId && $supplierGuessName)
-        <div class="alert alert-crit">Fournisseur « {{ $supplierGuessName }} » non trouvé dans le catalogue — choisis-le manuellement ci-dessous.</div>
+        <div class="alert alert-crit"><i class="bi bi-exclamation-triangle-fill"></i> <span>Fournisseur « {{ $supplierGuessName }} » non trouvé dans le catalogue — choisis-le manuellement ci-dessous.</span></div>
     @endif
 
     <div
@@ -53,20 +53,20 @@
                         <input type="number" step="0.01" min="0" :name="'lines['+index+'][unit_price]'" x-model="line.unit_price" required>
                     </div>
                     <div class="field" style="flex:0">
-                        <button type="button" class="btn btn-sm btn-danger" @click="removeLine(index)">✕</button>
+                        <button type="button" class="btn btn-sm btn-danger" @click="removeLine(index)"><i class="bi bi-x-lg"></i></button>
                     </div>
                 </div>
             </template>
 
-            <button type="button" class="btn btn-sm" @click="addLine()">+ Ajouter une ligne</button>
-            @error('lines') <div class="error" style="margin-top:8px">{{ $message }}</div> @enderror
+            <button type="button" class="btn btn-sm" @click="addLine()"><i class="bi bi-plus-lg"></i> Ajouter une ligne</button>
+            @error('lines') <div class="error"><i class="bi bi-exclamation-circle"></i> {{ $message }}</div> @enderror
 
             <div class="cart-totals" style="margin-top:20px">
                 <div class="row total"><span>Total commande</span><span x-text="total().toLocaleString('fr-FR') + ' FCFA'"></span></div>
             </div>
 
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Enregistrer le brouillon</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Enregistrer le brouillon</button>
                 <a href="{{ route('purchase-orders.index') }}" class="btn btn-ghost">Annuler</a>
             </div>
         </form>

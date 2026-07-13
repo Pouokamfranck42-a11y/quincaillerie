@@ -1,10 +1,10 @@
 <x-layout :title="'Vente #'.$sale->id">
     <div class="page-head">
         <div>
-            <h1>Vente #{{ $sale->id }}</h1>
+            <h1><i class="bi bi-receipt text-primary"></i> Vente #{{ $sale->id }}</h1>
             <p>{{ $sale->created_at->format('d/m/Y H:i') }} · {{ $sale->user->name }} · {{ $sale->customer?->name ?? 'Client de passage' }}</p>
         </div>
-        <a href="{{ route('sales.print', $sale) }}" class="btn" target="_blank">Imprimer le bon de livraison</a>
+        <a href="{{ route('sales.print', $sale) }}" class="btn" target="_blank"><i class="bi bi-printer"></i> Imprimer le bon de livraison</a>
     </div>
 
     <div class="card">
@@ -21,11 +21,14 @@
                             <td class="num">{{ $line->returned_quantity > 0 ? rtrim(rtrim(number_format($line->returned_quantity, 2, ',', ' '), '0'), ',') : '—' }}</td>
                             <td>
                                 @if ($line->returnableQuantity() > 0)
-                                    <form method="POST" action="{{ route('sales.return-line', [$sale, $line]) }}" class="flex" onsubmit="return confirm('Confirmer le retour ? Le stock sera réintégré.');">
+                                    <form method="POST" action="{{ route('sales.return-line', [$sale, $line]) }}" id="return-sale-line-{{ $line->id }}" class="flex">
                                         @csrf
                                         <input type="number" step="0.01" min="0.01" max="{{ $line->returnableQuantity() }}" name="quantity" placeholder="Qté" style="width:80px" required>
-                                        <button type="submit" class="btn btn-sm">Retourner</button>
+                                        <button type="button" class="btn btn-sm" data-bs-toggle="modal" data-bs-target="#confirm-return-sale-{{ $line->id }}"><i class="bi bi-arrow-return-left"></i> Retourner</button>
                                     </form>
+                                    <x-confirm-modal id="confirm-return-sale-{{ $line->id }}" title="Confirmer le retour ?" body="Le stock sera réintégré pour la quantité saisie.">
+                                        <button type="submit" form="return-sale-line-{{ $line->id }}" class="btn btn-primary"><i class="bi bi-check-lg"></i> Confirmer</button>
+                                    </x-confirm-modal>
                                 @endif
                             </td>
                         </tr>

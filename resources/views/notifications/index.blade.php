@@ -1,12 +1,12 @@
 <x-layout title="Notifications">
     <div class="page-head">
         <div>
-            <h1>Notifications</h1>
+            <h1><i class="bi bi-bell text-primary"></i> Notifications</h1>
             <p>Alertes de seuil de stock et de péremption proche.</p>
         </div>
         <form method="POST" action="{{ route('notifications.mark-all-read') }}">
             @csrf
-            <button type="submit" class="btn">Tout marquer comme lu</button>
+            <button type="submit" class="btn"><i class="bi bi-check2-all"></i> Tout marquer comme lu</button>
         </form>
     </div>
 
@@ -20,9 +20,9 @@
                         <td>
                             {{ $notification->data['message'] ?? '—' }}
                             @if (($notification->data['type'] ?? null) === 'low_stock')
-                                <a href="{{ route('products.show', $notification->data['product_id']) }}">voir le produit</a>
+                                <a href="{{ route('products.show', $notification->data['product_id']) }}"><i class="bi bi-box-seam"></i> voir le produit</a>
                             @elseif (($notification->data['type'] ?? null) === 'lot_expiring')
-                                <a href="{{ route('products.show', $notification->data['product_id']) }}">voir le produit</a>
+                                <a href="{{ route('products.show', $notification->data['product_id']) }}"><i class="bi bi-box-seam"></i> voir le produit</a>
                             @endif
                         </td>
                         <td class="muted">{{ $notification->created_at->format('d/m/Y H:i') }}</td>
@@ -30,13 +30,13 @@
                             @if (! $notification->read_at)
                                 <form method="POST" action="{{ route('notifications.mark-read', $notification->id) }}">
                                     @csrf
-                                    <button type="submit" class="btn btn-sm">Marquer comme lu</button>
+                                    <button type="submit" class="btn btn-sm"><i class="bi bi-check-lg"></i> Marquer comme lu</button>
                                 </form>
                             @endif
                         </td>
                     </tr>
                 @empty
-                    <tr class="empty-row"><td colspan="4">Aucune notification.</td></tr>
+                    <tr class="empty-row"><td colspan="4"><i class="bi bi-inbox"></i> Aucune notification.</td></tr>
                 @endforelse
             </tbody>
         </table>

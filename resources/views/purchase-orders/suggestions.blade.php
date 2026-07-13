@@ -1,7 +1,7 @@
 <x-layout title="Suggestions de réapprovisionnement">
     <div class="page-head">
         <div>
-            <h1>Suggestions de réapprovisionnement</h1>
+            <h1><i class="bi bi-lightbulb text-primary"></i> Suggestions de réapprovisionnement</h1>
             <p>Produits sous leur point de commande (stock disponible + en cours de livraison), groupés par fournisseur. Quantité suggérée : reconstitue jusqu'au stock maximum (ou point de commande + stock de sécurité), avec la quantité économique de commande (EOQ) comme plancher.</p>
         </div>
     </div>
@@ -13,7 +13,7 @@
             @csrf
             @foreach ($lowStock as $supplierId => $products)
                 <div class="card">
-                    <div class="card-head"><h2>{{ $products->first()->supplier->name }}</h2></div>
+                    <div class="card-head"><h2><i class="bi bi-truck"></i> {{ $products->first()->supplier->name }}</h2></div>
                     <div class="tbl-wrap">
                         <table>
                             <thead>
@@ -37,7 +37,7 @@
             @endforeach
 
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Créer les commandes en brouillon</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Créer les commandes en brouillon</button>
                 <a href="{{ route('purchase-orders.index') }}" class="btn btn-ghost">Annuler</a>
             </div>
         </form>

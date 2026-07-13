@@ -1,5 +1,5 @@
 <x-layout title="Nouveau transfert de stock">
-    <div class="page-head"><h1>Nouveau transfert de stock</h1></div>
+    <div class="page-head"><h1><i class="bi bi-plus-lg text-primary"></i> Nouveau transfert de stock</h1></div>
 
     @if ($warehouses->count() < 2)
         <div class="card">
@@ -58,12 +58,12 @@
                             <input type="number" step="0.01" min="0.01" :name="'lines['+index+'][quantity]'" x-model="line.quantity" required>
                         </div>
                         <div class="field" style="flex:0">
-                            <button type="button" class="btn btn-sm btn-danger" @click="removeLine(index)">✕</button>
+                            <button type="button" class="btn btn-sm btn-danger" @click="removeLine(index)"><i class="bi bi-x-lg"></i></button>
                         </div>
                     </div>
                 </template>
-                <button type="button" class="btn btn-sm" @click="addLine()">+ Ajouter un produit</button>
-                @error('lines') <div class="error" style="margin-top:8px">{{ $message }}</div> @enderror
+                <button type="button" class="btn btn-sm" @click="addLine()"><i class="bi bi-plus-lg"></i> Ajouter un produit</button>
+                @error('lines') <div class="error"><i class="bi bi-exclamation-circle"></i> {{ $message }}</div> @enderror
 
                 <div class="field" style="margin-top:16px">
                     <label for="notes">Notes (optionnel)</label>
@@ -71,7 +71,7 @@
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Créer le transfert</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Créer le transfert</button>
                     <a href="{{ route('stock-transfers.index') }}" class="btn btn-ghost">Annuler</a>
                 </div>
             </form>

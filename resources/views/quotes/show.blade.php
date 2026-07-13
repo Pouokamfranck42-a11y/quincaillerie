@@ -1,7 +1,7 @@
 <x-layout :title="'Devis #'.$quote->id">
     <div class="page-head">
         <div>
-            <h1>Devis #{{ $quote->id }}</h1>
+            <h1><i class="bi bi-file-earmark-text text-primary"></i> Devis #{{ $quote->id }}</h1>
             <p>{{ $quote->customer?->name ?? 'Client de passage' }} · créé le {{ $quote->created_at->format('d/m/Y') }} par {{ $quote->user->name }}
                 @if ($quote->valid_until) · valable jusqu'au {{ $quote->valid_until->format('d/m/Y') }} @endif
             </p>
@@ -11,7 +11,7 @@
         @endif
     </div>
 
-    @error('credit') <div class="alert alert-crit">{{ $message }}</div> @enderror
+    @error('credit') <div class="alert alert-crit"><i class="bi bi-exclamation-triangle-fill"></i> <span>{{ $message }}</span></div> @enderror
 
     <div class="card">
         <div class="tbl-wrap">
@@ -42,7 +42,7 @@
 
     @if ($quote->status !== 'converti')
         <div class="card">
-            <div class="card-head"><h2>Convertir en vente</h2></div>
+            <div class="card-head"><h2><i class="bi bi-arrow-repeat"></i> Convertir en vente</h2></div>
             <p>La vente sera rattachée à votre session de caisse actuellement ouverte.</p>
             <form method="POST" action="{{ route('quotes.convert', $quote) }}" class="flex">
                 @csrf
@@ -54,7 +54,7 @@
                         <option value="credit">À crédit</option>
                     @endif
                 </select>
-                <button type="submit" class="btn btn-primary">Convertir en vente</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Convertir en vente</button>
             </form>
         </div>
     @endif

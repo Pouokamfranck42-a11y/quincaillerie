@@ -1,7 +1,7 @@
 <x-layout title="Assistant IA">
     <div class="page-head">
         <div>
-            <h1>Assistant IA</h1>
+            <h1><i class="bi bi-robot text-primary"></i> Assistant IA</h1>
             <p>Recherche produit, vérification de stock, conseils d'usage — s'appuie sur les données réelles du catalogue.</p>
         </div>
     </div>

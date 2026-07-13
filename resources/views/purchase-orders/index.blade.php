@@ -1,13 +1,13 @@
 <x-layout title="Commandes fournisseur">
     <div class="page-head">
         <div>
-            <h1>Commandes fournisseur</h1>
+            <h1><i class="bi bi-cart3 text-primary"></i> Commandes fournisseur</h1>
             <p>Suivi des commandes passées et de leur réception.</p>
         </div>
         <div class="flex">
-            <a href="{{ route('purchase-orders.import-invoice') }}" class="btn">📄 Importer une facture</a>
-            <a href="{{ route('purchase-orders.suggestions') }}" class="btn">Suggestions de réappro</a>
-            <a href="{{ route('purchase-orders.create') }}" class="btn btn-primary">+ Nouvelle commande</a>
+            <a href="{{ route('purchase-orders.import-invoice') }}" class="btn"><i class="bi bi-file-earmark-arrow-up"></i> Importer une facture</a>
+            <a href="{{ route('purchase-orders.suggestions') }}" class="btn"><i class="bi bi-lightbulb"></i> Suggestions de réappro</a>
+            <a href="{{ route('purchase-orders.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouvelle commande</a>
         </div>
     </div>
 
@@ -29,10 +29,10 @@
                             @endif
                         </td>
                         <td class="muted">{{ $po->created_at->format('d/m/Y') }}</td>
-                        <td><a href="{{ route('purchase-orders.show', $po) }}" class="btn btn-sm">Voir</a></td>
+                        <td><a href="{{ route('purchase-orders.show', $po) }}" class="btn btn-sm"><i class="bi bi-eye"></i> Voir</a></td>
                     </tr>
                 @empty
-                    <tr class="empty-row"><td colspan="6">Aucune commande fournisseur pour l'instant.</td></tr>
+                    <tr class="empty-row"><td colspan="6"><i class="bi bi-inbox"></i> Aucune commande fournisseur pour l'instant.</td></tr>
                 @endforelse
             </tbody>
         </table>

@@ -184,13 +184,17 @@ new class extends Component
 <div class="pos-grid">
     <div>
         <div class="pos-search">
-            <input
-                type="search"
-                id="pos-search-input"
-                wire:model.live.debounce.250ms="search"
-                placeholder="Rechercher un produit par nom, référence ou code-barres…"
-                autofocus
-            >
+            <div class="input-group">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+                <input
+                    type="search"
+                    id="pos-search-input"
+                    class="border-start-0 ps-0"
+                    wire:model.live.debounce.250ms="search"
+                    placeholder="Rechercher un produit par nom, référence ou code-barres…"
+                    autofocus
+                >
+            </div>
             <div wire:ignore>
                 <x-barcode-scan target="pos-search-input" />
             </div>
@@ -204,7 +208,7 @@ new class extends Component
                         <div class="name">{{ $product->name }}</div>
                         <div class="meta">
                             {{ $product->reference }} · {{ number_format($product->priceFor($this->selectedCustomer()), 0, ',', ' ') }} FCFA / {{ $product->unit }}
-                            @if ($product->location) · 📍 {{ $product->location }} @endif
+                            @if ($product->location) · <i class="bi bi-geo-alt"></i> {{ $product->location }} @endif
                             @if ($product->tracks_lots)
                                 @php $fefo = $product->nextFefoLot(); @endphp
                                 · <span class="{{ $fefo?->expiresWithin(30) ? 'badge badge-warn' : 'muted' }}">{{ $fefo ? 'lot '.$fefo->lot_number.' — '.$fefo->expiry_date?->format('d/m/Y') : 'aucun lot disponible' }}</span>
@@ -221,17 +225,17 @@ new class extends Component
                 </div>
             @empty
                 @if (mb_strlen(trim($search)) >= 2)
-                    <p class="muted">Aucun produit trouvé.</p>
+                    <p class="muted"><i class="bi bi-search"></i> Aucun produit trouvé.</p>
                 @endif
             @endforelse
         </div>
     </div>
 
     <div class="pos-cart">
-        <h3>Panier</h3>
+        <h3><i class="bi bi-cart-check"></i> Panier</h3>
 
-        @error('cart') <div class="alert alert-crit">{{ $message }}</div> @enderror
-        @error('credit') <div class="alert alert-crit">{{ $message }}</div> @enderror
+        @error('cart') <div class="alert alert-crit"><i class="bi bi-exclamation-triangle-fill"></i> <span>{{ $message }}</span></div> @enderror
+        @error('credit') <div class="alert alert-crit"><i class="bi bi-exclamation-triangle-fill"></i> <span>{{ $message }}</span></div> @enderror
 
         @forelse ($this->cartLines() as $line)
             <div class="cart-line">
@@ -249,25 +253,25 @@ new class extends Component
                     wire:change="updateQuantity({{ $line['product_id'] }}, $event.target.value)"
                 >
                 <span class="mono">{{ number_format($line['price'] * $line['quantity'], 0, ',', ' ') }}</span>
-                <button type="button" class="btn btn-sm btn-ghost" wire:click="removeFromCart({{ $line['product_id'] }})">✕</button>
+                <button type="button" class="btn btn-sm btn-ghost" wire:click="removeFromCart({{ $line['product_id'] }})"><i class="bi bi-x-lg"></i></button>
             </div>
         @empty
-            <p class="muted">Panier vide — recherchez un article à gauche.</p>
+            <p class="muted"><i class="bi bi-cart"></i> Panier vide — recherchez un article à gauche.</p>
         @endforelse
 
         @if ($this->crossSellSuggestions()->isNotEmpty())
             <div style="margin-top:10px">
-                <div class="muted" style="font-size:12px; margin-bottom:6px">Souvent acheté avec :</div>
+                <div class="muted" style="font-size:12px; margin-bottom:6px"><i class="bi bi-lightbulb"></i> Souvent acheté avec :</div>
                 <div class="flex" style="flex-wrap:wrap; gap:6px">
                     @foreach ($this->crossSellSuggestions() as $suggestion)
-                        <button type="button" class="btn btn-sm btn-ghost" style="border:1px solid var(--steel-200)" wire:click="addToCart({{ $suggestion->id }})">+ {{ $suggestion->name }}</button>
+                        <button type="button" class="btn btn-sm btn-ghost" style="border:1px solid var(--steel-200)" wire:click="addToCart({{ $suggestion->id }})"><i class="bi bi-plus-circle"></i> {{ $suggestion->name }}</button>
                     @endforeach
                 </div>
             </div>
         @endif
 
         <div class="field" style="margin-top:14px">
-            <label for="customerId">Client (optionnel)</label>
+            <label for="customerId"><i class="bi bi-person me-1"></i>Client (optionnel)</label>
             <select id="customerId" wire:model.live="customerId">
                 <option value="">Client de passage</option>
                 @foreach ($this->customers as $customer)
@@ -275,12 +279,12 @@ new class extends Component
                 @endforeach
             </select>
             @if ($this->selectedCustomer()?->type === 'professionnel')
-                <div class="hint">Tarif pro appliqué · crédit disponible : {{ number_format($this->selectedCustomer()->availableCredit(), 0, ',', ' ') }} FCFA</div>
+                <div class="hint"><i class="bi bi-info-circle"></i> Tarif pro appliqué · crédit disponible : {{ number_format($this->selectedCustomer()->availableCredit(), 0, ',', ' ') }} FCFA</div>
             @endif
         </div>
 
         <div class="field">
-            <label for="paymentMethod">Paiement</label>
+            <label for="paymentMethod"><i class="bi bi-credit-card-2-front me-1"></i>Paiement</label>
             <select id="paymentMethod" wire:model="paymentMethod">
                 <option value="especes">Espèces</option>
                 <option value="carte">Carte</option>
@@ -304,7 +308,7 @@ new class extends Component
             wire:click="checkout"
             @disabled(empty($cart))
         >
-            Encaisser
+            <i class="bi bi-cash-coin"></i> Encaisser
         </button>
     </div>
 </div>

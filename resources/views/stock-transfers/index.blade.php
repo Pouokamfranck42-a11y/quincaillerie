@@ -1,10 +1,10 @@
 <x-layout title="Transferts de stock">
     <div class="page-head">
         <div>
-            <h1>Transferts de stock</h1>
+            <h1><i class="bi bi-arrow-repeat text-primary"></i> Transferts de stock</h1>
             <p>Mouvements de stock entre entrepôts/magasins.</p>
         </div>
-        <a href="{{ route('stock-transfers.create') }}" class="btn btn-primary">+ Nouveau transfert</a>
+        <a href="{{ route('stock-transfers.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouveau transfert</a>
     </div>
 
     <div class="tbl-wrap">
@@ -23,10 +23,10 @@
                             @endif
                         </td>
                         <td class="muted">{{ $transfer->created_at->format('d/m/Y') }}</td>
-                        <td><a href="{{ route('stock-transfers.show', $transfer) }}" class="btn btn-sm">Voir</a></td>
+                        <td><a href="{{ route('stock-transfers.show', $transfer) }}" class="btn btn-sm"><i class="bi bi-eye"></i> Voir</a></td>
                     </tr>
                 @empty
-                    <tr class="empty-row"><td colspan="7">Aucun transfert pour l'instant.</td></tr>
+                    <tr class="empty-row"><td colspan="7"><i class="bi bi-inbox"></i> Aucun transfert pour l'instant.</td></tr>
                 @endforelse
             </tbody>
         </table>

@@ -1,15 +1,15 @@
 <x-layout title="Mouvements de stock">
     <div class="page-head">
         <div>
-            <h1>Stock</h1>
+            <h1><i class="bi bi-arrow-left-right text-primary"></i> Stock</h1>
             <p>Historique des mouvements et alertes de stock bas.</p>
         </div>
-        <a href="{{ route('stock-movements.create') }}" class="btn btn-primary">+ Nouveau mouvement</a>
+        <a href="{{ route('stock-movements.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouveau mouvement</a>
     </div>
 
     @if ($lowStockProducts->isNotEmpty())
         <div class="card">
-            <div class="card-head"><h2>Produits en stock bas ({{ $lowStockProducts->count() }})</h2></div>
+            <div class="card-head"><h2><i class="bi bi-exclamation-triangle"></i> Produits en stock bas ({{ $lowStockProducts->count() }})</h2></div>
             <div class="tbl-wrap">
                 <table>
                     <thead><tr><th>Produit</th><th class="num">Stock</th><th class="num">Seuil</th><th></th></tr></thead>
@@ -19,7 +19,7 @@
                                 <td>{{ $product->name }}</td>
                                 <td class="num">{{ rtrim(rtrim(number_format($product->stock_quantity ?? 0, 2, ',', ' '), '0'), ',') }} {{ $product->unit }}</td>
                                 <td class="num">{{ $product->low_stock_threshold }}</td>
-                                <td><a href="{{ route('products.show', $product) }}" class="btn btn-sm">Voir</a></td>
+                                <td><a href="{{ route('products.show', $product) }}" class="btn btn-sm"><i class="bi bi-eye"></i> Voir</a></td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -29,7 +29,7 @@
     @endif
 
     <div class="card">
-        <div class="card-head"><h2>Derniers mouvements</h2></div>
+        <div class="card-head"><h2><i class="bi bi-clock-history"></i> Derniers mouvements</h2></div>
         <div class="tbl-wrap">
             <table>
                 <thead><tr><th>Date</th><th>Produit</th><th>Type</th><th class="num">Quantité</th><th>Motif</th><th>Par</th></tr></thead>

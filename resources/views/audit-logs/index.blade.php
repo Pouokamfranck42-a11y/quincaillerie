@@ -1,7 +1,7 @@
 <x-layout title="Journal d'audit">
     <div class="page-head">
         <div>
-            <h1>Journal d'audit</h1>
+            <h1><i class="bi bi-journal-text text-primary"></i> Journal d'audit</h1>
             <p>Traçabilité des actions sensibles : changements de prix, changements de rôle.</p>
         </div>
     </div>
@@ -25,7 +25,7 @@
                         <td class="mono" style="font-size:12px">{{ collect($log->new_values)->map(fn ($v, $k) => "$k: $v")->implode(' · ') }}</td>
                     </tr>
                 @empty
-                    <tr class="empty-row"><td colspan="5">Aucune action sensible enregistrée pour l'instant.</td></tr>
+                    <tr class="empty-row"><td colspan="5"><i class="bi bi-inbox"></i> Aucune action sensible enregistrée pour l'instant.</td></tr>
                 @endforelse
             </tbody>
         </table>

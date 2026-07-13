@@ -19,7 +19,7 @@
     </style>
 </head>
 <body>
-    <button class="no-print" onclick="window.print()" style="float:right">Imprimer</button>
+    <button class="no-print" onclick="window.print()" style="float:right">🖨 Imprimer</button>
     <h1>Bon de livraison</h1>
     <p class="muted">Vente #{{ $sale->id }} · {{ $sale->created_at->format('d/m/Y H:i') }}</p>
     <p class="muted">Client : {{ $sale->customer?->name ?? 'Client de passage' }}<br>Vendu par : {{ $sale->user->name }}</p>

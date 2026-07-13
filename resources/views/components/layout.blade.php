@@ -6,81 +6,73 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <title>{{ $title }} — Quincaillerie</title>
-        <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+        <link rel="stylesheet" href="{{ asset('css/vendor/bootstrap.min.css') }}">
+        <link rel="stylesheet" href="{{ asset('css/vendor/bootstrap-icons.min.css') }}">
+        <link rel="stylesheet" href="{{ asset('css/theme.css') }}">
         @livewireStyles
     </head>
     <body>
         <div class="app-shell">
-            <aside class="sidebar">
-                <div class="sidebar-brand"><span class="dot"></span> Quincaillerie</div>
-
-                <nav class="sidebar-nav">
-                    <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">Tableau de bord</a>
-                    <a href="{{ route('chatbot.index') }}" class="{{ request()->routeIs('chatbot.*') ? 'active' : '' }}">🤖 Assistant IA</a>
-
-                    @hasanyrole('admin|caissier')
-                        <div class="sidebar-section">Vente</div>
-                        <a href="{{ route('pos.index') }}" class="{{ request()->routeIs('pos.*') ? 'active' : '' }}">Caisse (POS)</a>
-                        <a href="{{ route('sales.index') }}" class="{{ request()->routeIs('sales.*') ? 'active' : '' }}">Ventes</a>
-                        <a href="{{ route('quotes.index') }}" class="{{ request()->routeIs('quotes.*') ? 'active' : '' }}">Devis</a>
-                        <a href="{{ route('customers.index') }}" class="{{ request()->routeIs('customers.*') ? 'active' : '' }}">Clients</a>
-                    @endhasanyrole
-
-                    @hasanyrole('admin|magasinier')
-                        <div class="sidebar-section">Catalogue</div>
-                        <a href="{{ route('products.index') }}" class="{{ request()->routeIs('products.*') ? 'active' : '' }}">Produits</a>
-                        <a href="{{ route('product-families.index') }}" class="{{ request()->routeIs('product-families.*') ? 'active' : '' }}">Familles &amp; variantes</a>
-                        <a href="{{ route('categories.index') }}" class="{{ request()->routeIs('categories.*') ? 'active' : '' }}">Catégories</a>
-                        <a href="{{ route('suppliers.index') }}" class="{{ request()->routeIs('suppliers.*') ? 'active' : '' }}">Fournisseurs</a>
-
-                        <div class="sidebar-section">Stock &amp; achats</div>
-                        <a href="{{ route('stock-movements.index') }}" class="{{ request()->routeIs('stock-movements.*') ? 'active' : '' }}">Mouvements de stock</a>
-                        <a href="{{ route('purchase-orders.index') }}" class="{{ request()->routeIs('purchase-orders.*') ? 'active' : '' }}">Commandes fournisseur</a>
-                        <a href="{{ route('stock-transfers.index') }}" class="{{ request()->routeIs('stock-transfers.*') ? 'active' : '' }}">Transferts</a>
-                        <a href="{{ route('inventory-counts.index') }}" class="{{ request()->routeIs('inventory-counts.*') ? 'active' : '' }}">Inventaires</a>
-                    @endhasanyrole
-
-                    @hasrole('admin')
-                        <div class="sidebar-section">Pilotage</div>
-                        <a href="{{ route('reports.index') }}" class="{{ request()->routeIs('reports.index') ? 'active' : '' }}">Rapports ventes</a>
-                        <a href="{{ route('reports.stock') }}" class="{{ request()->routeIs('reports.stock') ? 'active' : '' }}">Rapports stock</a>
-                        <a href="{{ route('reports.cash-flow') }}" class="{{ request()->routeIs('reports.cash-flow') ? 'active' : '' }}">Prévision de trésorerie</a>
-                        <a href="{{ route('users.index') }}" class="{{ request()->routeIs('users.*') ? 'active' : '' }}">Utilisateurs</a>
-                        <a href="{{ route('warehouses.index') }}" class="{{ request()->routeIs('warehouses.*') ? 'active' : '' }}">Entrepôts</a>
-                        <a href="{{ route('audit-logs.index') }}" class="{{ request()->routeIs('audit-logs.*') ? 'active' : '' }}">Journal d'audit</a>
-                        <a href="{{ route('trash.index') }}" class="{{ request()->routeIs('trash.*') ? 'active' : '' }}">Corbeille</a>
-                    @endhasrole
-                </nav>
-
-                <div class="sidebar-foot">
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <button type="submit">Se déconnecter</button>
-                    </form>
-                </div>
+            <aside class="sidebar d-none d-lg-flex">
+                @include('components.sidebar-nav')
             </aside>
+
+            <div class="offcanvas offcanvas-start d-lg-none p-0 border-0" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarOffcanvasLabel">
+                <div class="sidebar d-flex h-100" style="width:100%">
+                    @include('components.sidebar-nav')
+                </div>
+            </div>
 
             <div class="main">
                 <header class="topbar">
-                    <a href="{{ route('notifications.index') }}" class="btn btn-ghost btn-sm" style="position:relative">
-                        🔔
-                        @php $unread = auth()->user()->unreadNotifications()->count(); @endphp
-                        @if ($unread > 0)
-                            <span class="badge badge-crit" style="position:absolute; top:-6px; right:-6px; min-width:18px; justify-content:center;">{{ $unread }}</span>
-                        @endif
-                    </a>
-                    <div class="topbar-user">
-                        {{ auth()->user()->name }}
-                        <span class="role-pill">{{ auth()->user()->getRoleNames()->first() ?? '—' }}</span>
+                    <div class="flex" style="gap:14px">
+                        <button class="btn btn-ghost btn-sm d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas" aria-label="Ouvrir le menu">
+                            <i class="bi bi-list" style="font-size:20px"></i>
+                        </button>
+                        <form method="GET" action="{{ route('products.index') }}" class="topbar-search d-none d-md-block">
+                            <div class="input-group">
+                                <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-body-secondary"></i></span>
+                                <input type="search" name="q" class="form-control border-start-0 ps-0" placeholder="Rechercher un produit…" aria-label="Rechercher un produit">
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="flex" style="gap:6px">
+                        <a href="{{ route('notifications.index') }}" class="topbar-icon-btn" title="Notifications">
+                            <i class="bi bi-bell"></i>
+                            @php $unread = auth()->user()->unreadNotifications()->count(); @endphp
+                            @if ($unread > 0)
+                                <span class="badge badge-crit" style="position:absolute; top:3px; right:3px; min-width:17px; height:17px; justify-content:center; padding:0; font-size:10px;">{{ $unread }}</span>
+                            @endif
+                        </a>
+
+                        <div class="dropdown">
+                            <button class="btn btn-ghost btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span class="topbar-user">
+                                    <span class="d-none d-sm-inline">{{ auth()->user()->name }}</span>
+                                    <span class="role-pill">{{ auth()->user()->getRoleNames()->first() ?? '—' }}</span>
+                                </span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                <li><h6 class="dropdown-header mb-0">{{ auth()->user()->email }}</h6></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form method="POST" action="{{ route('logout') }}">
+                                        @csrf
+                                        <button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right me-2"></i>Se déconnecter</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                 </header>
 
                 <main class="content">
                     @if (session('success'))
-                        <div class="alert alert-good">{{ session('success') }}</div>
+                        <div class="alert alert-good"><i class="bi bi-check-circle-fill"></i> <span>{{ session('success') }}</span></div>
                     @endif
                     @if (session('error'))
-                        <div class="alert alert-crit">{{ session('error') }}</div>
+                        <div class="alert alert-crit"><i class="bi bi-exclamation-triangle-fill"></i> <span>{{ session('error') }}</span></div>
                     @endif
 
                     {{ $slot }}
@@ -88,6 +80,7 @@
             </div>
         </div>
 
+        <script src="{{ asset('js/vendor/bootstrap.bundle.min.js') }}"></script>
         <script src="{{ asset('js/barcode-scanner.js') }}"></script>
         <script src="{{ asset('js/product-recognition.js') }}"></script>
         <script src="{{ asset('js/product-description.js') }}"></script>

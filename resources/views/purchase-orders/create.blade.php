@@ -1,5 +1,5 @@
 <x-layout title="Nouvelle commande fournisseur">
-    <div class="page-head"><h1>Nouvelle commande fournisseur</h1></div>
+    <div class="page-head"><h1><i class="bi bi-plus-lg text-primary"></i> Nouvelle commande fournisseur</h1></div>
 
     <div
         class="card"
@@ -63,13 +63,13 @@
                         <input type="number" step="0.01" min="0" :name="'lines['+index+'][unit_price]'" x-model="line.unit_price" required>
                     </div>
                     <div class="field" style="flex:0">
-                        <button type="button" class="btn btn-sm btn-danger" @click="removeLine(index)">✕</button>
+                        <button type="button" class="btn btn-sm btn-danger" @click="removeLine(index)"><i class="bi bi-x-lg"></i></button>
                     </div>
                 </div>
             </template>
 
-            <button type="button" class="btn btn-sm" @click="addLine()">+ Ajouter une ligne</button>
-            @error('lines') <div class="error" style="margin-top:8px">{{ $message }}</div> @enderror
+            <button type="button" class="btn btn-sm" @click="addLine()"><i class="bi bi-plus-lg"></i> Ajouter une ligne</button>
+            @error('lines') <div class="error"><i class="bi bi-exclamation-circle"></i> {{ $message }}</div> @enderror
 
             <div class="cart-totals" style="margin-top:20px">
                 <div class="row total"><span>Total commande</span><span x-text="total().toLocaleString('fr-FR') + ' FCFA'"></span></div>
@@ -87,7 +87,7 @@
             </div>
 
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Créer la commande</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Créer la commande</button>
                 <a href="{{ route('purchase-orders.index') }}" class="btn btn-ghost">Annuler</a>
             </div>
         </form>

@@ -1,5 +1,5 @@
 <x-layout title="Nouvelle catégorie">
-    <div class="page-head"><h1>Nouvelle catégorie</h1></div>
+    <div class="page-head"><h1><i class="bi bi-plus-lg text-primary"></i> Nouvelle catégorie</h1></div>
 
     <div class="card" style="max-width:520px">
         <form method="POST" action="{{ route('categories.store') }}">
@@ -19,7 +19,7 @@
                 </select>
             </div>
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Créer</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Créer</button>
                 <a href="{{ route('categories.index') }}" class="btn btn-ghost">Annuler</a>
             </div>
         </form>
