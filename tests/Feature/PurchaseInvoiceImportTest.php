@@ -6,7 +6,7 @@ use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
 use App\Models\User;
-use App\Services\Ai\ClaudeService;
+use App\Services\Ai\GeminiService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Spatie\Permission\Models\Role;
@@ -36,7 +36,7 @@ class PurchaseInvoiceImportTest extends TestCase
             'unit' => 'sac', 'low_stock_threshold' => 5,
         ]);
 
-        $this->mock(ClaudeService::class, function ($mock) {
+        $this->mock(GeminiService::class, function ($mock) {
             $mock->shouldReceive('extractStructured')->once()->andReturn([
                 'supplier_name' => 'Quincaillerie du Port',
                 'lines' => [

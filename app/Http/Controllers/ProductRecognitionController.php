@@ -3,12 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
-use App\Services\Ai\ClaudeService;
+use App\Services\Ai\GeminiService;
 use Illuminate\Http\Request;
 
 class ProductRecognitionController extends Controller
 {
-    public function recognize(Request $request, ClaudeService $claude)
+    public function recognize(Request $request, GeminiService $gemini)
     {
         $request->validate([
             'photo' => ['required', 'image', 'max:5120'],
@@ -18,7 +18,7 @@ class ProductRecognitionController extends Controller
         $data = base64_encode((string) file_get_contents($file->getRealPath()));
         $mediaType = $file->getMimeType() ?: 'image/jpeg';
 
-        $result = $claude->extractStructured(
+        $result = $gemini->extractStructured(
             "Tu identifies des articles de quincaillerie à partir d'une photo pour aider un magasinier à retrouver ou créer une fiche produit.",
             [
                 ['type' => 'image', 'source' => ['type' => 'base64', 'data' => $data, 'mediaType' => $mediaType]],

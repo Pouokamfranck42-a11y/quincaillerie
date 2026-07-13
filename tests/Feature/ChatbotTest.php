@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Services\Ai\ClaudeService;
+use App\Services\Ai\GeminiService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -27,7 +27,7 @@ class ChatbotTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('caissier');
 
-        $this->mock(ClaudeService::class, function ($mock) {
+        $this->mock(GeminiService::class, function ($mock) {
             $mock->shouldReceive('chat')->once()->andReturn('Réponse simulée de test.');
         });
 

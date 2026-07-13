@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Customer;
-use App\Services\Ai\ClaudeService;
+use App\Services\Ai\GeminiService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -16,7 +16,7 @@ class SegmentCustomers extends Command
 
     private const SEGMENTS = ['VIP', 'régulier', 'occasionnel', 'à risque de départ', 'nouveau'];
 
-    public function handle(ClaudeService $claude): void
+    public function handle(GeminiService $gemini): void
     {
         $customers = Customer::orderBy('id')->get();
         $updated = 0;
@@ -32,7 +32,7 @@ class SegmentCustomers extends Command
                 .'jours depuis le dernier achat, encours dû). Segments possibles : '.implode(', ', self::SEGMENTS).'. '
                 .'Donne pour chaque client une justification en une phrase, en français.';
 
-            $result = $claude->extractStructured(
+            $result = $gemini->extractStructured(
                 $system,
                 [['type' => 'text', 'text' => json_encode($payload, JSON_UNESCAPED_UNICODE)]],
                 [

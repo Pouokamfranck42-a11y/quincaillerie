@@ -6,7 +6,7 @@ use App\Models\Product;
 use App\Models\ProductSupplier;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
-use App\Services\Ai\ClaudeService;
+use App\Services\Ai\GeminiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -21,7 +21,7 @@ class PurchaseInvoiceImportController extends Controller
      * Analyse la facture via l'IA (OCR structuré) et affiche un formulaire de révision —
      * aucune commande n'est créée à cette étape.
      */
-    public function analyze(Request $request, ClaudeService $claude)
+    public function analyze(Request $request, GeminiService $gemini)
     {
         $request->validate([
             'invoice' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:8192'],
@@ -35,7 +35,7 @@ class PurchaseInvoiceImportController extends Controller
             ? ['type' => 'document', 'source' => ['type' => 'base64', 'mediaType' => 'application/pdf', 'data' => $data]]
             : ['type' => 'image', 'source' => ['type' => 'base64', 'mediaType' => $file->getMimeType() ?: 'image/jpeg', 'data' => $data]];
 
-        $result = $claude->extractStructured(
+        $result = $gemini->extractStructured(
             "Tu extrais les informations d'une facture fournisseur de quincaillerie pour préremplir un bon de commande.",
             [
                 $documentBlock,

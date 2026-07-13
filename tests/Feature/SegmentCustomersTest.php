@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Customer;
-use App\Services\Ai\ClaudeService;
+use App\Services\Ai\GeminiService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -15,7 +15,7 @@ class SegmentCustomersTest extends TestCase
     {
         $customer = Customer::create(['name' => 'Client fidèle', 'type' => 'particulier']);
 
-        $this->mock(ClaudeService::class, function ($mock) use ($customer) {
+        $this->mock(GeminiService::class, function ($mock) use ($customer) {
             $mock->shouldReceive('extractStructured')->once()->andReturn([
                 'segments' => [
                     ['customer_id' => $customer->id, 'segment' => 'VIP', 'rationale' => 'Achète très régulièrement.'],

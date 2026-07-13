@@ -3,12 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
-use App\Services\Ai\ClaudeService;
+use App\Services\Ai\GeminiService;
 use Illuminate\Http\Request;
 
 class ProductDescriptionController extends Controller
 {
-    public function generate(Request $request, ClaudeService $claude)
+    public function generate(Request $request, GeminiService $gemini)
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -24,7 +24,7 @@ class ProductDescriptionController extends Controller
             .(filled($data['brand'] ?? null) ? "Marque : {$data['brand']}\n" : '')
             .($category ? "Catégorie : {$category}\n" : '');
 
-        $description = $claude->generateText(
+        $description = $gemini->generateText(
             "Tu rédiges des descriptions commerciales courtes et factuelles pour le catalogue d'une quincaillerie.",
             $prompt,
         );

@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\User;
-use App\Services\Ai\ClaudeService;
+use App\Services\Ai\GeminiService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Spatie\Permission\Models\Role;
@@ -34,7 +34,7 @@ class ProductAiHelpersTest extends TestCase
             'unit' => 'unité', 'low_stock_threshold' => 5,
         ]);
 
-        $this->mock(ClaudeService::class, function ($mock) {
+        $this->mock(GeminiService::class, function ($mock) {
             $mock->shouldReceive('extractStructured')->once()->andReturn([
                 'object_type' => 'marteau',
                 'probable_material' => 'acier et bois',
@@ -58,7 +58,7 @@ class ProductAiHelpersTest extends TestCase
         $admin->assignRole('admin');
         $category = Category::create(['name' => 'Outillage']);
 
-        $this->mock(ClaudeService::class, function ($mock) {
+        $this->mock(GeminiService::class, function ($mock) {
             $mock->shouldReceive('generateText')->once()->andReturn('Un marteau robuste pour tous vos travaux de charpente.');
         });
 
