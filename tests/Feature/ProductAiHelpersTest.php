@@ -41,6 +41,7 @@ class ProductAiHelpersTest extends TestCase
                 'probable_use' => 'enfoncer des clous',
                 'keywords' => ['marteau'],
             ]);
+            $mock->shouldReceive('lastErrorMessage')->andReturn(null);
         });
 
         $response = $this->actingAs($admin)->post(route('products.recognize-photo'), [
@@ -60,6 +61,7 @@ class ProductAiHelpersTest extends TestCase
 
         $this->mock(GeminiService::class, function ($mock) {
             $mock->shouldReceive('generateText')->once()->andReturn('Un marteau robuste pour tous vos travaux de charpente.');
+            $mock->shouldReceive('lastErrorMessage')->andReturn(null);
         });
 
         $response = $this->actingAs($admin)->postJson(route('products.generate-description'), [

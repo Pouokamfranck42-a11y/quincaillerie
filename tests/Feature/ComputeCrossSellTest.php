@@ -6,6 +6,7 @@ use App\Models\CashRegisterSession;
 use App\Models\Product;
 use App\Models\ProductAssociation;
 use App\Models\Sale;
+use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -22,6 +23,9 @@ class ComputeCrossSellTest extends TestCase
         $nails = Product::create(['reference' => 'CLOU-1', 'name' => 'Clous', 'purchase_price' => 500, 'sale_price' => 800, 'unit' => 'boîte', 'low_stock_threshold' => 5]);
         $hammer = Product::create(['reference' => 'MART-1', 'name' => 'Marteau', 'purchase_price' => 3000, 'sale_price' => 4500, 'unit' => 'unité', 'low_stock_threshold' => 2]);
         $paint = Product::create(['reference' => 'PEINT-1', 'name' => 'Peinture', 'purchase_price' => 2000, 'sale_price' => 3000, 'unit' => 'pot', 'low_stock_threshold' => 5]);
+        foreach ([$nails, $hammer, $paint] as $product) {
+            StockMovement::create(['product_id' => $product->id, 'type' => StockMovement::TYPE_ENTREE, 'quantity' => 10]);
+        }
 
         foreach ([1, 2] as $i) {
             Sale::checkout([

@@ -32,12 +32,11 @@
                 body: JSON.stringify({ name, brand, category_id: categoryId || null }),
             });
 
-            if (!response.ok) {
-                throw new Error('request failed');
-            }
-
             const data = await response.json();
-            if (descriptionField && data.description) {
+
+            if (!response.ok) {
+                alert(data.error || "Impossible de générer une description pour le moment.");
+            } else if (descriptionField && data.description) {
                 descriptionField.value = data.description;
             }
         } catch (e) {

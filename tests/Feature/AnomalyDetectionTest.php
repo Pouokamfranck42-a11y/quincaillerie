@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\CashRegisterSession;
 use App\Models\Product;
 use App\Models\Sale;
+use App\Models\StockMovement;
 use App\Models\User;
 use App\Notifications\AnomalyDetected;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -35,6 +36,7 @@ class AnomalyDetectionTest extends TestCase
             'reference' => 'PERTE-1', 'name' => 'Produit vendu à perte', 'purchase_price' => 1000, 'sale_price' => 500,
             'unit' => 'unité', 'low_stock_threshold' => 5,
         ]);
+        StockMovement::create(['product_id' => $product->id, 'type' => StockMovement::TYPE_ENTREE, 'quantity' => 10]);
         $session = CashRegisterSession::create(['user_id' => $cashier->id, 'opening_amount' => 0, 'opened_at' => now()]);
 
         Sale::checkout([
@@ -55,6 +57,7 @@ class AnomalyDetectionTest extends TestCase
             'reference' => 'OK-1', 'name' => 'Produit normal', 'purchase_price' => 1000, 'sale_price' => 1500,
             'unit' => 'unité', 'low_stock_threshold' => 5,
         ]);
+        StockMovement::create(['product_id' => $product->id, 'type' => StockMovement::TYPE_ENTREE, 'quantity' => 10]);
         $session = CashRegisterSession::create(['user_id' => $cashier->id, 'opening_amount' => 0, 'opened_at' => now()]);
 
         Sale::checkout([

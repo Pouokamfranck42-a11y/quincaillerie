@@ -81,6 +81,14 @@ new class extends Component
 
         $reply = $gemini->chat($system, $history, ChatbotTools::definitions());
 
+        // Diffusion progressive de la réponse déjà résolue (outils compris) : un vrai flux SSE
+        // Gemini avec appels d'outils entrelacés demanderait de détecter un functionCall au
+        // milieu du flux, nettement plus risqué — voir GeminiService::streamChat().
+        foreach ($this->chunkForStreaming($reply) as $i => $chunk) {
+            $this->stream(to: 'assistant-reply', content: $chunk, replace: $i === 0);
+            usleep(15000);
+        }
+
         ChatMessage::create([
             'chat_conversation_id' => $this->conversationId,
             'role' => ChatMessage::ROLE_ASSISTANT,
@@ -88,6 +96,14 @@ new class extends Component
         ]);
 
         unset($this->conversations);
+    }
+
+    /** Découpe mot par mot (sans casser un mot) pour un effet de frappe naturel. */
+    private function chunkForStreaming(string $text): array
+    {
+        preg_match_all('/\S+\s*/u', $text, $matches);
+
+        return $matches[0] ?: [$text];
     }
 };
 ?>
@@ -114,7 +130,9 @@ new class extends Component
             @empty
                 <p class="chat-empty"><i class="bi bi-robot" style="font-size:28px; display:block; margin-bottom:8px;"></i>Pose une question sur le stock, les prix, ou demande un conseil d'usage — l'assistant s'appuie sur le catalogue réel.</p>
             @endforelse
-            <div wire:loading wire:target="send" class="chat-bubble chat-bubble-assistant muted"><i class="bi bi-three-dots"></i> L'assistant réfléchit…</div>
+            <div wire:loading wire:target="send" class="chat-bubble chat-bubble-assistant">
+                <i class="bi bi-robot me-1"></i><span wire:stream="assistant-reply"><i class="bi bi-three-dots"></i> L'assistant réfléchit…</span>
+            </div>
         </div>
 
         <form wire:submit.prevent="send" class="chat-input-row">

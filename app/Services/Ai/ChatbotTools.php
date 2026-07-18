@@ -13,6 +13,23 @@ class ChatbotTools
      *
      * @return array<int, array{name: string, description: string, inputSchema: array<string, mixed>, handler: callable}>
      */
+    /**
+     * Sous-ensemble sûr pour un visiteur de la boutique en ligne (pas de compte requis) :
+     * exclut get_low_stock_products, qui expose des signaux de réapprovisionnement internes
+     * (concurrentiellement sensibles) sans intérêt pour un client.
+     *
+     * @return array<int, array{name: string, description: string, inputSchema: array<string, mixed>, handler: callable}>
+     */
+    public static function publicDefinitions(): array
+    {
+        $publicNames = ['search_products', 'check_stock', 'get_product_price'];
+
+        return array_values(array_filter(
+            self::definitions(),
+            fn (array $tool) => in_array($tool['name'], $publicNames, true),
+        ));
+    }
+
     public static function definitions(): array
     {
         return [

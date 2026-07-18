@@ -30,11 +30,14 @@
                 body: formData,
             });
 
+            const data = await response.json();
+
             if (!response.ok) {
-                throw new Error('request failed');
+                results.innerHTML = `<p class="muted">${escapeHtml(data.error || "Impossible d'analyser la photo pour le moment.")}</p>`;
+                input.value = '';
+                return;
             }
 
-            const data = await response.json();
             renderResults(data);
         } catch (e) {
             results.innerHTML = '<p class="muted">Impossible d\'analyser la photo pour le moment.</p>';

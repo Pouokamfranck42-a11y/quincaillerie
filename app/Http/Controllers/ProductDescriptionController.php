@@ -24,10 +24,18 @@ class ProductDescriptionController extends Controller
             .(filled($data['brand'] ?? null) ? "Marque : {$data['brand']}\n" : '')
             .($category ? "Catégorie : {$category}\n" : '');
 
+        // maxTokens généreux : les modèles Gemini récents consomment une partie du budget en
+        // "réflexion" interne avant le texte visible — un budget trop juste coupe la réponse
+        // en plein milieu de phrase (constaté en vérification live avec le défaut à 1024).
         $description = $gemini->generateText(
             "Tu rédiges des descriptions commerciales courtes et factuelles pour le catalogue d'une quincaillerie.",
             $prompt,
+            2048,
         );
+
+        if ($gemini->lastErrorMessage() !== null) {
+            return response()->json(['error' => $gemini->lastErrorMessage()], 422);
+        }
 
         return response()->json(['description' => $description]);
     }

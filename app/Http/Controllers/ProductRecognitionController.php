@@ -37,6 +37,10 @@ class ProductRecognitionController extends Controller
             ],
         );
 
+        if ($gemini->lastErrorMessage() !== null) {
+            return response()->json(['error' => $gemini->lastErrorMessage()], 422);
+        }
+
         $keywords = array_filter((array) ($result['keywords'] ?? []));
 
         $matches = collect();
