@@ -38,6 +38,19 @@ return [
     'gemini' => [
         'key' => env('GEMINI_API_KEY'),
         'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
+        // 0 ou vide = illimité. Quota/coût (Phase 7) — voir GeminiUsageLimiter.
+        'daily_call_limit' => env('GEMINI_DAILY_CALL_LIMIT', 0),
+    ],
+
+    'payment' => [
+        // 'simulation' (défaut, aucun agrégateur requis) ou 'aggregator' (réel — voir AggregatorPaymentProvider).
+        'mode' => env('PAYMENT_MODE', 'simulation'),
+        'simulation_secret' => env('PAYMENT_SIMULATION_SECRET', 'simulation-secret-non-configure'),
+        'aggregator' => [
+            'base_url' => env('PAYMENT_AGGREGATOR_BASE_URL'),
+            'api_key' => env('PAYMENT_AGGREGATOR_API_KEY'),
+            'webhook_secret' => env('PAYMENT_AGGREGATOR_WEBHOOK_SECRET'),
+        ],
     ],
 
 ];
