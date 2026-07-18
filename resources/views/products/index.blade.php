@@ -5,6 +5,7 @@
             <p>Catalogue, prix et stock courant.</p>
         </div>
         <div class="flex">
+            <a href="{{ route('products.import') }}" class="btn"><i class="bi bi-file-earmark-arrow-up"></i> Importer le catalogue</a>
             <button type="button" class="btn" id="recognize-photo-btn"><i class="bi bi-camera"></i> Reconnaître via photo</button>
             <a href="{{ route('products.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouveau produit</a>
         </div>
