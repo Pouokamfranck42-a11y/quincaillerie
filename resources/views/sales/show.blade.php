@@ -2,10 +2,35 @@
     <div class="page-head">
         <div>
             <h1><i class="bi bi-receipt text-primary"></i> Vente #{{ $sale->id }}</h1>
-            <p>{{ $sale->created_at->format('d/m/Y H:i') }} · {{ $sale->user->name }} · {{ $sale->customer?->name ?? 'Client de passage' }}</p>
+            <p>{{ $sale->created_at->format('d/m/Y H:i') }} · {{ $sale->user?->name ?? 'Vente en ligne' }} · {{ $sale->customer?->name ?? 'Client de passage' }}</p>
         </div>
-        <a href="{{ route('sales.print', $sale) }}" class="btn" target="_blank"><i class="bi bi-printer"></i> Imprimer le bon de livraison</a>
+        <div class="flex">
+            <a href="{{ route('sales.print', $sale) }}" class="btn" target="_blank"><i class="bi bi-printer"></i> Bon de livraison</a>
+            @if ($sale->invoices->isNotEmpty())
+                <a href="{{ route('invoices.show', $sale->invoices->first()) }}" class="btn" target="_blank"><i class="bi bi-file-earmark-text"></i> Voir la facture {{ $sale->invoices->first()->number }}</a>
+            @else
+                <form method="POST" action="{{ route('invoices.store', $sale) }}" target="_blank">
+                    @csrf
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-file-earmark-plus"></i> Générer la facture</button>
+                </form>
+            @endif
+            @if ($sale->status === 'completed' && $sale->session?->status === 'open')
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#confirm-cancel-sale"><i class="bi bi-x-circle"></i> Annuler la vente</button>
+                <form method="POST" action="{{ route('sales.cancel', $sale) }}" id="cancel-sale-{{ $sale->id }}">
+                    @csrf
+                </form>
+                <x-confirm-modal id="confirm-cancel-sale" title="Annuler cette vente ?" body="Le stock de chaque ligne encore non retournée sera réintégré. Cette action est tracée dans le journal d'audit.">
+                    <button type="submit" form="cancel-sale-{{ $sale->id }}" class="btn btn-danger"><i class="bi bi-x-circle"></i> Confirmer l'annulation</button>
+                </x-confirm-modal>
+            @endif
+        </div>
     </div>
+
+    @error('sale') <div class="alert alert-crit"><i class="bi bi-exclamation-triangle-fill"></i> <span>{{ $message }}</span></div> @enderror
+
+    @if ($sale->status === 'cancelled')
+        <div class="alert alert-crit"><i class="bi bi-x-circle-fill"></i> <span>Vente annulée le {{ $sale->cancelled_at?->format('d/m/Y H:i') }} — stock réintégré.</span></div>
+    @endif
 
     <div class="card">
         <div class="tbl-wrap">
@@ -40,6 +65,10 @@
             <div class="row"><span>Sous-total</span><span>{{ number_format($sale->subtotal, 0, ',', ' ') }}</span></div>
             <div class="row"><span>TVA</span><span>{{ number_format($sale->tax_amount, 0, ',', ' ') }}</span></div>
             <div class="row total"><span>Total</span><span>{{ number_format($sale->total, 0, ',', ' ') }} FCFA</span></div>
+            @if ($sale->amount_tendered !== null)
+                <div class="row"><span>Montant reçu</span><span>{{ number_format($sale->amount_tendered, 0, ',', ' ') }}</span></div>
+                <div class="row"><span>Monnaie rendue</span><span>{{ number_format($sale->change_due, 0, ',', ' ') }}</span></div>
+            @endif
         </div>
     </div>
 </x-layout>

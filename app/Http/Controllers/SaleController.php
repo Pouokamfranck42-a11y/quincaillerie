@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Sale;
 use App\Models\SaleLine;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class SaleController extends Controller
 {
@@ -12,7 +13,7 @@ class SaleController extends Controller
     {
         $query = Sale::with(['user', 'customer'])->withCount('lines')->where('status', 'completed');
 
-        if (! $request->user()->hasRole('admin')) {
+        if (! $request->user()->can('ventes.historique_tous')) {
             $query->where('user_id', $request->user()->id);
         }
 
@@ -23,7 +24,7 @@ class SaleController extends Controller
 
     public function show(Sale $sale)
     {
-        $sale->load(['user', 'customer', 'session', 'lines.product']);
+        $sale->load(['user', 'customer', 'session', 'lines.product', 'invoices']);
 
         return view('sales.show', compact('sale'));
     }
@@ -47,5 +48,18 @@ class SaleController extends Controller
         $saleLine->returnQuantity((float) $data['quantity'], $request->user()->id, $data['reason'] ?? null);
 
         return redirect()->route('sales.show', $sale)->with('success', 'Retour enregistré : le stock a été réintégré.');
+    }
+
+    public function cancel(Request $request, Sale $sale)
+    {
+        $sale->load('session');
+
+        try {
+            $sale->cancel($request->user()->id, $request->input('reason'));
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
+
+        return redirect()->route('sales.show', $sale)->with('success', 'Vente annulée — le stock a été réintégré.');
     }
 }

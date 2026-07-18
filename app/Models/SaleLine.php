@@ -20,9 +20,10 @@ class SaleLine extends Model
         return $this->belongsTo(Sale::class);
     }
 
+    /** withTrashed() : une ligne de vente historique doit rester lisible même si le produit a été archivé depuis (suppression douce). */
     public function product()
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(Product::class)->withTrashed();
     }
 
     public function lot()
@@ -50,17 +51,15 @@ class SaleLine extends Model
         }
 
         DB::transaction(function () use ($quantity, $byUserId, $reason) {
-            StockMovement::create([
-                'product_id' => $this->product_id,
-                'lot_id' => $this->lot_id,
-                'type' => StockMovement::TYPE_ENTREE,
-                'subtype' => StockMovement::SUBTYPE_RETOUR_CLIENT,
-                'quantity' => $quantity,
-                'reason' => $reason ?? 'Retour client — vente #'.$this->sale_id,
-                'reference_type' => Sale::class,
-                'reference_id' => $this->sale_id,
-                'user_id' => $byUserId,
-            ]);
+            app(\App\Services\Stock\StockService::class)->reintegrate(
+                product: $this->product,
+                quantity: $quantity,
+                reference: $this->sale,
+                userId: $byUserId,
+                reason: $reason ?? 'Retour client — vente #'.$this->sale_id,
+                subtype: StockMovement::SUBTYPE_RETOUR_CLIENT,
+                lotId: $this->lot_id,
+            );
 
             $this->update(['returned_quantity' => (float) $this->returned_quantity + $quantity]);
         });

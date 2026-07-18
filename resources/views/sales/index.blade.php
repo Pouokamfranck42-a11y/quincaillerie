@@ -14,7 +14,7 @@
                     <tr>
                         <td class="mono">#{{ $sale->id }}</td>
                         <td class="muted">{{ $sale->created_at->format('d/m/Y H:i') }}</td>
-                        <td>{{ $sale->user->name }}</td>
+                        <td>{{ $sale->user?->name ?? 'Vente en ligne' }}</td>
                         <td class="muted">{{ $sale->customer?->name ?? 'Client de passage' }}</td>
                         <td class="num">{{ $sale->lines_count }}</td>
                         <td class="num">{{ number_format($sale->total, 0, ',', ' ') }}</td>

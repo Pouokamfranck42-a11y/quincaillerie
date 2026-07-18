@@ -2,6 +2,7 @@
 
 use App\Models\CashRegisterSession;
 use App\Models\Customer;
+use App\Models\Invoice;
 use App\Models\Product;
 use App\Models\ProductAssociation;
 use App\Models\Sale;
@@ -23,11 +24,16 @@ new class extends Component
 
     public float $taxRate = 18;
 
+    public ?float $amountTendered = null;
+
     public ?int $lastAddedProductId = null;
 
     public function mount(CashRegisterSession $session): void
     {
         $this->sessionId = $session->id;
+        // TVA alignée sur la config de facturation (Phase 6) plutôt qu'un taux figé —
+        // 0% tant que l'entreprise n'est pas confirmée assujettie par un comptable.
+        $this->taxRate = config('company.vat_subject') ? (float) config('company.vat_rate') : 0.0;
     }
 
     #[Computed]
@@ -83,8 +89,16 @@ new class extends Component
                 'price' => $product->priceFor($customer),
                 'quantity' => $quantity,
                 'lot' => $lot,
+                'available' => $product->availableStock(),
             ];
         });
+    }
+
+    /** true si au moins une ligne du panier dépasse le stock disponible — vérification affichée en plus du verrou serveur autoritaire. */
+    #[Computed]
+    public function hasOverstockedLine(): bool
+    {
+        return $this->cartLines()->contains(fn ($line) => (float) $line['quantity'] > (float) $line['available']);
     }
 
     public function addToCart(int $productId): void
@@ -148,10 +162,27 @@ new class extends Component
         return $this->subtotal() + $this->taxAmount();
     }
 
+    /** Monnaie à rendre — pertinent uniquement en espèces, une fois un montant reçu saisi. */
+    #[Computed]
+    public function changeDue(): float
+    {
+        if ($this->paymentMethod !== 'especes' || $this->amountTendered === null) {
+            return 0.0;
+        }
+
+        return max(0.0, round($this->amountTendered - $this->total(), 2));
+    }
+
     public function checkout(): void
     {
         if (empty($this->cart)) {
             $this->addError('cart', 'Le panier est vide.');
+
+            return;
+        }
+
+        if ($this->hasOverstockedLine()) {
+            $this->addError('cart', 'Une ou plusieurs lignes dépassent le stock disponible — ajustez les quantités.');
 
             return;
         }
@@ -170,13 +201,18 @@ new class extends Component
             $this->customerId,
             $this->paymentMethod,
             $this->taxRate,
+            $this->paymentMethod === 'especes' ? $this->amountTendered : null,
         );
+
+        $invoice = Invoice::generateFor($sale);
 
         $this->cart = [];
         $this->customerId = null;
         $this->paymentMethod = 'especes';
+        $this->amountTendered = null;
         session()->flash('success', 'Vente #'.$sale->id.' encaissée : '.number_format($sale->total, 0, ',', ' ').' FCFA.');
-        $this->redirectRoute('pos.index');
+        session()->flash('auto_print', true);
+        $this->redirectRoute('invoices.show', $invoice);
     }
 };
 ?>
@@ -238,11 +274,15 @@ new class extends Component
         @error('credit') <div class="alert alert-crit"><i class="bi bi-exclamation-triangle-fill"></i> <span>{{ $message }}</span></div> @enderror
 
         @forelse ($this->cartLines() as $line)
-            <div class="cart-line">
+            @php $overstocked = (float) $line['quantity'] > (float) $line['available']; @endphp
+            <div class="cart-line" @if($overstocked) style="background:var(--crit-soft, #FEE2E2); border-radius:6px" @endif>
                 <span class="name">
                     {{ $line['name'] }}
                     @if ($line['lot'])
                         <br><span class="muted" style="font-size:11px">lot {{ $line['lot']->lot_number }}{{ $line['lot']->expiry_date ? ' · péremption ' . $line['lot']->expiry_date->format('d/m/Y') : '' }}</span>
+                    @endif
+                    @if ($overstocked)
+                        <br><span style="font-size:11px; color:var(--crit, #DC2626)"><i class="bi bi-exclamation-triangle-fill"></i> disponible : {{ rtrim(rtrim(number_format($line['available'], 2, ',', ' '), '0'), ',') }}</span>
                     @endif
                 </span>
                 <input
@@ -285,7 +325,7 @@ new class extends Component
 
         <div class="field">
             <label for="paymentMethod"><i class="bi bi-credit-card-2-front me-1"></i>Paiement</label>
-            <select id="paymentMethod" wire:model="paymentMethod">
+            <select id="paymentMethod" wire:model.live="paymentMethod">
                 <option value="especes">Espèces</option>
                 <option value="carte">Carte</option>
                 <option value="mobile">Mobile money</option>
@@ -294,6 +334,20 @@ new class extends Component
                 @endif
             </select>
         </div>
+
+        @error('amount_tendered') <div class="alert alert-crit"><i class="bi bi-exclamation-triangle-fill"></i> <span>{{ $message }}</span></div> @enderror
+
+        @if ($paymentMethod === 'especes')
+            <div class="field">
+                <label for="amountTendered"><i class="bi bi-cash me-1"></i>Montant reçu</label>
+                <input type="number" id="amountTendered" step="1" min="0" wire:model.live="amountTendered" placeholder="{{ number_format($this->total(), 0, ',', ' ') }}">
+                @if ($amountTendered !== null && $amountTendered >= $this->total())
+                    <div class="hint"><i class="bi bi-arrow-return-left"></i> Monnaie à rendre : <strong>{{ number_format($this->changeDue(), 0, ',', ' ') }} FCFA</strong></div>
+                @elseif ($amountTendered !== null)
+                    <div class="hint" style="color:var(--crit, #DC2626)"><i class="bi bi-exclamation-triangle"></i> Montant insuffisant.</div>
+                @endif
+            </div>
+        @endif
 
         <div class="cart-totals">
             <div class="row"><span>Sous-total</span><span>{{ number_format($this->subtotal(), 0, ',', ' ') }}</span></div>
@@ -306,9 +360,9 @@ new class extends Component
             class="btn btn-primary"
             style="width:100%; margin-top:14px"
             wire:click="checkout"
-            @disabled(empty($cart))
+            @disabled(empty($cart) || $this->hasOverstockedLine() || ($paymentMethod === 'especes' && $amountTendered !== null && $amountTendered < $this->total()))
         >
-            <i class="bi bi-cash-coin"></i> Encaisser
+            <i class="bi bi-cash-coin"></i> Marquer comme vendu
         </button>
     </div>
 </div>

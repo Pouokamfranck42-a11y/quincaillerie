@@ -50,6 +50,27 @@ class CreditSaleTest extends TestCase
         $this->assertEquals((float) $sale->total, $customer->outstandingBalance());
     }
 
+    public function test_cancelled_credit_sale_no_longer_counts_toward_outstanding_balance(): void
+    {
+        $user = User::factory()->create();
+        $customer = Customer::create([
+            'name' => 'Client Pro Annulé', 'type' => 'professionnel', 'credit_limit' => 100000, 'payment_terms_days' => 30,
+        ]);
+        $product = Product::create([
+            'reference' => 'CRED-3', 'name' => 'Produit', 'purchase_price' => 100, 'sale_price' => 200,
+            'unit' => 'unité', 'low_stock_threshold' => 5,
+        ]);
+        StockMovement::create(['product_id' => $product->id, 'type' => 'entree', 'quantity' => 50]);
+        $session = $this->makeSession($user);
+
+        $sale = Sale::checkout([['product' => $product, 'quantity' => 10]], $session, $user->id, $customer->id, 'credit', 18);
+        $this->assertGreaterThan(0, $customer->outstandingBalance());
+
+        $sale->cancel($user->id);
+
+        $this->assertEquals(0.0, $customer->outstandingBalance());
+    }
+
     public function test_credit_sale_beyond_limit_is_blocked(): void
     {
         $user = User::factory()->create();
