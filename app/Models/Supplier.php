@@ -9,7 +9,7 @@ class Supplier extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['name', 'contact_name', 'phone', 'email', 'address', 'lead_time_days', 'payment_terms'];
+    protected $fillable = ['name', 'contact_name', 'phone', 'email', 'address', 'lead_time_days', 'payment_terms', 'payment_terms_days'];
 
     public function products()
     {
