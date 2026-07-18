@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\CashRegisterSession;
 use App\Models\Product;
 use App\Models\Sale;
+use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -24,6 +25,7 @@ class CashFlowReportTest extends TestCase
             'reference' => 'TRESO-1', 'name' => 'Produit trésorerie', 'purchase_price' => 1000, 'sale_price' => 1500,
             'unit' => 'unité', 'low_stock_threshold' => 5,
         ]);
+        StockMovement::create(['product_id' => $product->id, 'type' => StockMovement::TYPE_ENTREE, 'quantity' => 10]);
         $session = CashRegisterSession::create(['user_id' => $admin->id, 'opening_amount' => 0, 'opened_at' => now()]);
 
         Sale::checkout([

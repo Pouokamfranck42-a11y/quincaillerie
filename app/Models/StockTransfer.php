@@ -26,9 +26,10 @@ class StockTransfer extends Model
         return $this->belongsTo(Warehouse::class, 'to_warehouse_id');
     }
 
+    /** withTrashed() : un transfert historique reste attribuable même si l'utilisateur a quitté depuis. */
     public function user()
     {
-        return $this->belongsTo(\App\Models\User::class);
+        return $this->belongsTo(\App\Models\User::class)->withTrashed();
     }
 
     public function lines()

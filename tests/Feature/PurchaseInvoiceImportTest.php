@@ -43,6 +43,7 @@ class PurchaseInvoiceImportTest extends TestCase
                     ['description' => 'Sac de ciment 50kg', 'quantity' => 20, 'unit_price' => 4800],
                 ],
             ]);
+            $mock->shouldReceive('lastErrorMessage')->andReturn(null);
         });
 
         $response = $this->actingAs($admin)->post(route('purchase-orders.import-invoice.analyze'), [

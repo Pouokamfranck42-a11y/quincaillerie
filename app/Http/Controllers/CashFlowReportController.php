@@ -8,11 +8,11 @@ use App\Models\Sale;
 class CashFlowReportController extends Controller
 {
     /**
-     * Aucun suivi de paiement fournisseur dans le modèle de données actuel (payment_terms est un
-     * champ libre, non exploitable) : on suppose conventionnellement un règlement 30 jours après
-     * la commande pour toutes les commandes en cours — approximation signalée à l'utilisateur.
+     * Phase 7 : utilise le délai réel du fournisseur (suppliers.payment_terms_days) quand il
+     * est renseigné. Ce n'est qu'en dernier recours — fournisseur sans délai connu — qu'on
+     * retombe sur cette hypothèse conventionnelle de 30 jours.
      */
-    private const SUPPLIER_PAYMENT_ASSUMPTION_DAYS = 30;
+    private const SUPPLIER_PAYMENT_FALLBACK_DAYS = 30;
 
     public function index()
     {
@@ -27,7 +27,7 @@ class CashFlowReportController extends Controller
 
         $pendingOrders = PurchaseOrder::whereIn('status', [PurchaseOrder::STATUS_ORDERED, PurchaseOrder::STATUS_PARTIALLY_RECEIVED])
             ->whereNotNull('ordered_at')
-            ->with('lines')
+            ->with(['lines', 'supplier'])
             ->get();
 
         $projections = collect([30, 60, 90])->map(function (int $days) use ($today, $dailyCashInflow, $dueSales, $pendingOrders) {
@@ -39,7 +39,11 @@ class CashFlowReportController extends Controller
                 ->sum(fn (Sale $s) => (float) $s->total - (float) $s->paid_amount);
 
             $outflow = (float) $pendingOrders
-                ->filter(fn (PurchaseOrder $po) => $po->ordered_at->copy()->addDays(self::SUPPLIER_PAYMENT_ASSUMPTION_DAYS)->lte($windowEnd))
+                ->filter(function (PurchaseOrder $po) use ($windowEnd) {
+                    $termDays = $po->supplier?->payment_terms_days ?? self::SUPPLIER_PAYMENT_FALLBACK_DAYS;
+
+                    return $po->ordered_at->copy()->addDays($termDays)->lte($windowEnd);
+                })
                 ->sum(fn (PurchaseOrder $po) => $po->total() + (float) $po->extra_costs);
 
             $inflow = $cashInflow + $creditCollections;
@@ -54,6 +58,20 @@ class CashFlowReportController extends Controller
             ];
         });
 
-        return view('reports.cash-flow', compact('projections'));
+        $payables = $pendingOrders->map(function (PurchaseOrder $po) {
+            $realTermDays = $po->supplier?->payment_terms_days;
+            $termDays = $realTermDays ?? self::SUPPLIER_PAYMENT_FALLBACK_DAYS;
+
+            return [
+                'purchase_order' => $po,
+                'supplier_name' => $po->supplier?->name ?? '—',
+                'due_date' => $po->ordered_at->copy()->addDays($termDays),
+                'term_days' => $termDays,
+                'is_real_term' => $realTermDays !== null,
+                'amount' => $po->total() + (float) $po->extra_costs,
+            ];
+        })->sortBy('due_date')->values();
+
+        return view('reports.cash-flow', compact('projections', 'payables'));
     }
 }

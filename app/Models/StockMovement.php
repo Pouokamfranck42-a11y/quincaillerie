@@ -20,6 +20,7 @@ class StockMovement extends Model
     public const SUBTYPE_REINTEGRATION_SAV = 'reintegration_sav';
     public const SUBTYPE_TRANSFERT = 'transfert';
     public const SUBTYPE_INVENTAIRE = 'inventaire';
+    public const SUBTYPE_ANNULATION_VENTE = 'annulation_vente';
 
     protected $fillable = [
         'product_id', 'warehouse_id', 'lot_id', 'type', 'subtype', 'quantity', 'unit_cost',
@@ -63,9 +64,10 @@ class StockMovement extends Model
         }
     }
 
+    /** withTrashed() : le grand livre de stock reste lisible même si le produit a été archivé depuis. */
     public function product()
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(Product::class)->withTrashed();
     }
 
     public function warehouse()
@@ -78,9 +80,10 @@ class StockMovement extends Model
         return $this->belongsTo(ProductLot::class, 'lot_id');
     }
 
+    /** withTrashed() : un mouvement historique reste attribuable même si l'utilisateur a quitté depuis. */
     public function user()
     {
-        return $this->belongsTo(\App\Models\User::class);
+        return $this->belongsTo(\App\Models\User::class)->withTrashed();
     }
 
     public function reference()

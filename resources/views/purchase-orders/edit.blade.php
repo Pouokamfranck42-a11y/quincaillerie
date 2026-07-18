@@ -6,7 +6,7 @@
         style="max-width:900px"
         x-data="{
             products: @json($products),
-            lines: @json($purchaseOrder->lines->map(fn ($l) => ['id' => $l->id, 'product_id' => $l->product_id, 'quantity' => (float) $l->quantity, 'unit_price' => (float) $l->unit_price])),
+            lines: @json($lines),
             total() { return this.lines.reduce((sum, l) => sum + ((parseFloat(l.quantity) || 0) * (parseFloat(l.unit_price) || 0)), 0); }
         }"
     >

@@ -30,9 +30,10 @@ class PurchaseOrder extends Model
         });
     }
 
+    /** withTrashed() : une commande fournisseur historique doit rester lisible même si le fournisseur a été archivé depuis. */
     public function supplier()
     {
-        return $this->belongsTo(Supplier::class);
+        return $this->belongsTo(Supplier::class)->withTrashed();
     }
 
     public function warehouse()
@@ -40,9 +41,10 @@ class PurchaseOrder extends Model
         return $this->belongsTo(Warehouse::class);
     }
 
+    /** withTrashed() : une commande historique reste attribuable même si l'utilisateur a quitté depuis. */
     public function user()
     {
-        return $this->belongsTo(\App\Models\User::class);
+        return $this->belongsTo(\App\Models\User::class)->withTrashed();
     }
 
     public function lines()

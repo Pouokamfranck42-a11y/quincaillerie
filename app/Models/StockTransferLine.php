@@ -17,8 +17,9 @@ class StockTransferLine extends Model
         return $this->belongsTo(StockTransfer::class);
     }
 
+    /** withTrashed() : une ligne de transfert historique doit rester lisible même si le produit a été archivé depuis. */
     public function product()
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(Product::class)->withTrashed();
     }
 }

@@ -21,9 +21,10 @@ class PurchaseOrderLine extends Model
         return $this->belongsTo(PurchaseOrder::class);
     }
 
+    /** withTrashed() : une ligne de commande historique doit rester lisible même si le produit a été archivé depuis. */
     public function product()
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(Product::class)->withTrashed();
     }
 
     /** Reliquat : quantité encore à recevoir (en unité d'achat). */

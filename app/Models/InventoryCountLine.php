@@ -18,9 +18,10 @@ class InventoryCountLine extends Model
         return $this->belongsTo(InventoryCount::class);
     }
 
+    /** withTrashed() : une ligne d'inventaire historique doit rester lisible même si le produit a été archivé depuis. */
     public function product()
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(Product::class)->withTrashed();
     }
 
     public function discrepancy(): float

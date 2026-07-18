@@ -9,7 +9,7 @@
     <div class="alert" style="background:var(--secondary-soft); color:var(--secondary-dark); border-color:#C3D4EF; border-left-color:var(--secondary)">
         <i class="bi bi-info-circle-fill"></i>
         <span>Approximation : les ventes cash sont extrapolées sur la moyenne des 30 derniers jours, les encaissements clients sur les échéances de crédit connues,
-        et les décaissements fournisseurs sur une hypothèse de règlement à 30 jours après commande (aucun suivi de paiement fournisseur n'existe dans l'application).</span>
+        et les décaissements fournisseurs sur le délai réel du fournisseur (fiche fournisseur) quand il est connu — sinon, hypothèse par défaut de 30 jours après commande (voir le détail ci-dessous).</span>
     </div>
 
     <div class="stat-grid">
@@ -42,6 +42,36 @@
                 </tbody>
             </table>
         </div>
+    </div>
+
+    <div class="card">
+        <div class="card-head"><h2><i class="bi bi-truck"></i> Échéances fournisseurs en cours</h2></div>
+        @if ($payables->isEmpty())
+            <p class="mt-0 muted">Aucune commande fournisseur en cours à régler.</p>
+        @else
+            <div class="tbl-wrap">
+                <table>
+                    <thead><tr><th>Fournisseur</th><th>Échéance estimée</th><th>Délai</th><th class="num">Montant</th></tr></thead>
+                    <tbody>
+                        @foreach ($payables as $payable)
+                            <tr>
+                                <td>{{ $payable['supplier_name'] }}</td>
+                                <td class="muted">{{ $payable['due_date']->format('d/m/Y') }}</td>
+                                <td>
+                                    {{ $payable['term_days'] }} j.
+                                    @if ($payable['is_real_term'])
+                                        <span class="badge badge-good">réel</span>
+                                    @else
+                                        <span class="badge badge-warn">défaut</span>
+                                    @endif
+                                </td>
+                                <td class="num">{{ number_format($payable['amount'], 0, ',', ' ') }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
     </div>
 
     <script src="{{ asset('js/vendor/chart.umd.min.js') }}"></script>

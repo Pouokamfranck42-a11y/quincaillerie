@@ -18,8 +18,9 @@ class QuoteLine extends Model
         return $this->belongsTo(Quote::class);
     }
 
+    /** withTrashed() : une ligne de devis historique doit rester lisible même si le produit a été archivé depuis. */
     public function product()
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(Product::class)->withTrashed();
     }
 }

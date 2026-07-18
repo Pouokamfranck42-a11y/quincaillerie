@@ -24,14 +24,16 @@ class Quote extends Model
         'valid_until' => 'date',
     ];
 
+    /** withTrashed() : un devis historique doit rester lisible même si le compte client a été désactivé/supprimé depuis. */
     public function customer()
     {
-        return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Customer::class)->withTrashed();
     }
 
+    /** withTrashed() : un devis historique reste attribuable même si l'utilisateur a quitté depuis (voir quotes/show.blade.php qui accède à $quote->user->name sans opérateur null-safe). */
     public function user()
     {
-        return $this->belongsTo(\App\Models\User::class);
+        return $this->belongsTo(\App\Models\User::class)->withTrashed();
     }
 
     public function lines()

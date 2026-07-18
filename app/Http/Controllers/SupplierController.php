@@ -59,6 +59,7 @@ class SupplierController extends Controller
             'address' => ['nullable', 'string'],
             'lead_time_days' => ['required', 'integer', 'min:0', 'max:365'],
             'payment_terms' => ['nullable', 'string'],
+            'payment_terms_days' => ['nullable', 'integer', 'min:0', 'max:365'],
         ]);
     }
 }

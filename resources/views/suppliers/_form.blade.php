@@ -29,7 +29,15 @@
     <input type="number" id="lead_time_days" name="lead_time_days" min="0" max="365" value="{{ old('lead_time_days', $supplier->lead_time_days ?? 7) }}" required>
     @error('lead_time_days') <div class="error">{{ $message }}</div> @enderror
 </div>
-<div class="field">
-    <label for="payment_terms">Conditions de paiement</label>
-    <textarea id="payment_terms" name="payment_terms" rows="2" placeholder="Ex : 30 jours net, 50% à la commande…">{{ old('payment_terms', $supplier->payment_terms ?? '') }}</textarea>
+<div class="field-row">
+    <div class="field">
+        <label for="payment_terms">Conditions de paiement (notes)</label>
+        <textarea id="payment_terms" name="payment_terms" rows="2" placeholder="Ex : 30 jours net, 50% à la commande…">{{ old('payment_terms', $supplier->payment_terms ?? '') }}</textarea>
+    </div>
+    <div class="field">
+        <label for="payment_terms_days">Délai de paiement réel (jours)</label>
+        <input type="number" id="payment_terms_days" name="payment_terms_days" min="0" max="365" value="{{ old('payment_terms_days', $supplier->payment_terms_days ?? '') }}" placeholder="Ex : 30">
+        <div class="hint">Utilisé pour la prévision de trésorerie — laisser vide si inconnu (une hypothèse par défaut de 30 jours sera utilisée en dernier recours).</div>
+        @error('payment_terms_days') <div class="error">{{ $message }}</div> @enderror
+    </div>
 </div>

@@ -18,8 +18,9 @@ class ProductSupplier extends Model
         return $this->belongsTo(Product::class);
     }
 
+    /** withTrashed() : un fournisseur secondaire archivé depuis reste affichable dans l'historique produit. */
     public function supplier()
     {
-        return $this->belongsTo(Supplier::class);
+        return $this->belongsTo(Supplier::class)->withTrashed();
     }
 }

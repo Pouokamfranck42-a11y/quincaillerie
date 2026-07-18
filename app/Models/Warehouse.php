@@ -17,6 +17,11 @@ class Warehouse extends Model
         return $this->hasMany(StockMovement::class);
     }
 
+    public function reservations()
+    {
+        return $this->hasMany(Reservation::class);
+    }
+
     public static function default(): self
     {
         return self::where('is_default', true)->firstOrFail();

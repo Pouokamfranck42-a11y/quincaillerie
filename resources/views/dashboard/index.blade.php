@@ -40,34 +40,38 @@
         </div>
     </div>
 
-    @hasrole('admin')
+    @if (auth()->user()->canAny(['rapports.voir', 'ia.previsions']))
         <div class="stat-grid" style="grid-template-columns:repeat(auto-fit, minmax(230px,1fr)); margin-bottom:26px;">
-            <a href="{{ route('reports.index') }}" class="card nav-card">
-                <div class="nav-card-icon"><i class="bi bi-graph-up"></i></div>
-                <div>
-                    <div class="nav-card-title">Rapports ventes</div>
-                    <div class="nav-card-sub">Évolution &amp; top produits</div>
-                </div>
-                <i class="bi bi-arrow-right nav-card-arrow"></i>
-            </a>
-            <a href="{{ route('reports.stock') }}" class="card nav-card">
-                <div class="nav-card-icon"><i class="bi bi-bar-chart"></i></div>
-                <div>
-                    <div class="nav-card-title">Rapports stock</div>
-                    <div class="nav-card-sub">Rotation, ABC, dormants</div>
-                </div>
-                <i class="bi bi-arrow-right nav-card-arrow"></i>
-            </a>
-            <a href="{{ route('reports.cash-flow') }}" class="card nav-card">
-                <div class="nav-card-icon"><i class="bi bi-cash-coin"></i></div>
-                <div>
-                    <div class="nav-card-title">Prévision de trésorerie</div>
-                    <div class="nav-card-sub">Projection 30/60/90 jours</div>
-                </div>
-                <i class="bi bi-arrow-right nav-card-arrow"></i>
-            </a>
+            @can('rapports.voir')
+                <a href="{{ route('reports.index') }}" class="card nav-card">
+                    <div class="nav-card-icon"><i class="bi bi-graph-up"></i></div>
+                    <div>
+                        <div class="nav-card-title">Rapports ventes</div>
+                        <div class="nav-card-sub">Évolution &amp; top produits</div>
+                    </div>
+                    <i class="bi bi-arrow-right nav-card-arrow"></i>
+                </a>
+                <a href="{{ route('reports.stock') }}" class="card nav-card">
+                    <div class="nav-card-icon"><i class="bi bi-bar-chart"></i></div>
+                    <div>
+                        <div class="nav-card-title">Rapports stock</div>
+                        <div class="nav-card-sub">Rotation, ABC, dormants</div>
+                    </div>
+                    <i class="bi bi-arrow-right nav-card-arrow"></i>
+                </a>
+            @endcan
+            @can('ia.previsions')
+                <a href="{{ route('reports.cash-flow') }}" class="card nav-card">
+                    <div class="nav-card-icon"><i class="bi bi-cash-coin"></i></div>
+                    <div>
+                        <div class="nav-card-title">Prévision de trésorerie</div>
+                        <div class="nav-card-sub">Projection 30/60/90 jours</div>
+                    </div>
+                    <i class="bi bi-arrow-right nav-card-arrow"></i>
+                </a>
+            @endcan
         </div>
-    @endhasrole
+    @endif
 
     <div class="card">
         <div class="card-head"><h2><i class="bi bi-clock-history"></i> Dernières ventes</h2></div>
@@ -78,13 +82,13 @@
                     @forelse ($recentSales as $sale)
                         <tr>
                             <td class="mono">{{ $sale->created_at->format('d/m H:i') }}</td>
-                            <td>{{ $sale->user->name }}</td>
+                            <td>{{ $sale->user?->name ?? 'Vente en ligne' }}</td>
                             <td class="num">{{ $sale->lines->count() }}</td>
                             <td class="num">{{ number_format($sale->total, 0, ',', ' ') }}</td>
                             <td>
-                                @hasanyrole('admin|caissier')
+                                @can('ventes.historique')
                                     <a href="{{ route('sales.show', $sale) }}" class="btn btn-sm"><i class="bi bi-eye"></i> Voir</a>
-                                @endhasanyrole
+                                @endcan
                             </td>
                         </tr>
                     @empty

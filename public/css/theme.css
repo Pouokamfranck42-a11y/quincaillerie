@@ -269,6 +269,7 @@ td.num, th.num{ font-variant-numeric:tabular-nums; text-align:right; }
 .alert{ padding:13px 18px; border-radius:var(--radius-sm); font-size:13.5px; margin-bottom:18px; border:1px solid transparent; display:flex; align-items:center; gap:10px; border-left-width:4px; }
 .alert-good{ background:var(--good-soft); color:#0F5C2C; border-color:#BBF0CE; border-left-color:var(--good); }
 .alert-crit{ background:var(--crit-soft); color:#8A1F1F; border-color:#F7C6C6; border-left-color:var(--crit); }
+.alert-warn{ background:var(--warn-soft); color:#7A4A04; border-color:#FDE4AE; border-left-color:var(--warn); }
 
 /* ---------- connexion ---------- */
 .auth-wrap{

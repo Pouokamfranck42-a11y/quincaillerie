@@ -65,6 +65,10 @@ class PurchaseInvoiceImportController extends Controller
             4096,
         );
 
+        if ($gemini->lastErrorMessage() !== null) {
+            return back()->withErrors(['invoice' => $gemini->lastErrorMessage()]);
+        }
+
         $supplier = filled($result['supplier_name'] ?? null)
             ? Supplier::where('name', 'ilike', '%'.$result['supplier_name'].'%')->first()
             : null;

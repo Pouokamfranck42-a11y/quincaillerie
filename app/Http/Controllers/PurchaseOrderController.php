@@ -72,8 +72,14 @@ class PurchaseOrderController extends Controller
 
         $purchaseOrder->load('lines.product');
         $products = Product::where('active', true)->orderBy('name')->get(['id', 'name', 'reference']);
+        $lines = $purchaseOrder->lines->map(fn ($l) => [
+            'id' => $l->id,
+            'product_id' => $l->product_id,
+            'quantity' => (float) $l->quantity,
+            'unit_price' => (float) $l->unit_price,
+        ]);
 
-        return view('purchase-orders.edit', compact('purchaseOrder', 'products'));
+        return view('purchase-orders.edit', compact('purchaseOrder', 'products', 'lines'));
     }
 
     public function update(Request $request, PurchaseOrder $purchaseOrder)

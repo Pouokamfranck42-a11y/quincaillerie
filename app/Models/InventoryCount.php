@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Ai\AnomalyDetector;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
@@ -77,6 +78,8 @@ class InventoryCount extends Model
                     'reference_id' => $this->id,
                     'user_id' => $byUserId,
                 ]);
+
+                AnomalyDetector::checkInventoryDiscrepancy($line, $line->product);
             }
 
             $this->update(['status' => self::STATUS_COMPLETED, 'completed_at' => now()]);
