@@ -1,7 +1,7 @@
 <x-layout title="Nouvel utilisateur">
     <div class="page-head"><h1><i class="bi bi-person-badge text-primary"></i> Nouvel utilisateur</h1></div>
 
-    <div class="card" style="max-width:480px">
+    <div class="card" style="max-width:640px">
         <form method="POST" action="{{ route('users.store') }}">
             @csrf
             <div class="field">
@@ -20,13 +20,23 @@
                 @error('password') <div class="error">{{ $message }}</div> @enderror
             </div>
             <div class="field">
-                <label for="role">Rôle</label>
-                <select id="role" name="role" required>
-                    <option value="caissier">Caissier</option>
-                    <option value="magasinier">Magasinier</option>
-                    <option value="admin">Admin</option>
+                <label for="role">Profil (optionnel)</label>
+                <select id="role" name="role">
+                    <option value="">Aucun profil — permissions individuelles uniquement</option>
+                    @foreach ($roles as $r)
+                        <option value="{{ $r->name }}" @selected(old('role') === $r->name)>{{ $r->name }}</option>
+                    @endforeach
                 </select>
+                @error('role') <div class="error">{{ $message }}</div> @enderror
+                <div class="hint">Les permissions ci-dessous s'ajoutent à celles du profil choisi.</div>
             </div>
+
+            <div class="field">
+                <label>Permissions individuelles supplémentaires</label>
+                <x-permission-checklist :selected="[]" />
+                @error('permissions') <div class="error">{{ $message }}</div> @enderror
+            </div>
+
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Créer</button>
                 <a href="{{ route('users.index') }}" class="btn btn-ghost">Annuler</a>

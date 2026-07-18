@@ -117,22 +117,30 @@
     <button type="button" class="btn btn-sm" @click="attrs.push({ key: '', value: '' })">+ Ajouter un attribut</button>
 </div>
 
+@php
+    // La permission 'prix.modifier' ne restreint que la MODIFICATION d'un prix existant — à la
+    // création, le prix reste requis pour obtenir une fiche produit valide (voir ProductController).
+    $priceLocked = ! empty($product) && ! auth()->user()->can('prix.modifier');
+@endphp
 <h3>Prix</h3>
+@if ($priceLocked)
+    <div class="hint"><i class="bi bi-lock"></i> Vous n'avez pas la permission de modifier les prix — valeurs actuelles affichées, non modifiables.</div>
+@endif
 <div class="field-row">
     <div class="field">
         <label for="purchase_price">Prix d'achat (par unité de stock)</label>
-        <input type="number" step="0.01" min="0" id="purchase_price" name="purchase_price" value="{{ old('purchase_price', $product->purchase_price ?? 0) }}" required>
+        <input type="number" step="0.01" min="0" id="purchase_price" name="purchase_price" value="{{ old('purchase_price', $product->purchase_price ?? 0) }}" @disabled($priceLocked) required>
         <div class="hint">Recalculé automatiquement (CUMP) à chaque réception fournisseur.</div>
         @error('purchase_price') <div class="error">{{ $message }}</div> @enderror
     </div>
     <div class="field">
         <label for="sale_price">Prix de vente particulier</label>
-        <input type="number" step="0.01" min="0" id="sale_price" name="sale_price" value="{{ old('sale_price', $product->sale_price ?? 0) }}" required>
+        <input type="number" step="0.01" min="0" id="sale_price" name="sale_price" value="{{ old('sale_price', $product->sale_price ?? 0) }}" @disabled($priceLocked) required>
         @error('sale_price') <div class="error">{{ $message }}</div> @enderror
     </div>
     <div class="field">
         <label for="pro_price">Prix de vente professionnel</label>
-        <input type="number" step="0.01" min="0" id="pro_price" name="pro_price" value="{{ old('pro_price', $product->pro_price ?? '') }}" placeholder="= prix particulier si vide">
+        <input type="number" step="0.01" min="0" id="pro_price" name="pro_price" value="{{ old('pro_price', $product->pro_price ?? '') }}" @disabled($priceLocked) placeholder="= prix particulier si vide">
         @error('pro_price') <div class="error">{{ $message }}</div> @enderror
     </div>
 </div>
@@ -201,3 +209,12 @@
         Produit actif (visible en caisse et dans le catalogue)
     </label>
 </div>
+@can('ecommerce.publier')
+    <div class="field">
+        <label style="display:flex; align-items:center; gap:8px; font-weight:400;">
+            <input type="checkbox" name="published_online" value="1" style="width:auto" @checked(old('published_online', $product->published_online ?? false))>
+            Publier sur la boutique en ligne
+        </label>
+        <div class="hint">Au lancement : ne cocher que pour les articles simples vendus à l'unité (pas la découpe au mètre, pas le très lourd à livrer).</div>
+    </div>
+@endcan

@@ -2,20 +2,26 @@
     <div class="page-head">
         <div>
             <h1><i class="bi bi-people text-primary"></i> Utilisateurs</h1>
-            <p>Comptes d'accès et rôles (admin / magasinier / caissier).</p>
+            <p>Comptes d'accès — profils et permissions individuelles.</p>
         </div>
-        <a href="{{ route('users.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouvel utilisateur</a>
+        <div class="flex">
+            @can('utilisateurs.permissions')
+                <a href="{{ route('roles.index') }}" class="btn"><i class="bi bi-shield-lock"></i> Profils</a>
+            @endcan
+            <a href="{{ route('users.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouvel utilisateur</a>
+        </div>
     </div>
 
     <div class="tbl-wrap">
         <table>
-            <thead><tr><th>Nom</th><th>E-mail</th><th>Rôle</th><th></th></tr></thead>
+            <thead><tr><th>Nom</th><th>E-mail</th><th>Profil</th><th>Permissions</th><th></th></tr></thead>
             <tbody>
                 @forelse ($users as $user)
                     <tr>
                         <td>{{ $user->name }}</td>
                         <td class="muted">{{ $user->email }}</td>
-                        <td><span class="role-pill"><i class="bi bi-shield-check"></i> {{ $user->roles->first()?->name ?? '—' }}</span></td>
+                        <td><span class="role-pill"><i class="bi bi-shield-check"></i> {{ $user->roles->first()?->name ?? 'Aucun' }}</span></td>
+                        <td class="muted">{{ $user->getAllPermissions()->count() }} au total</td>
                         <td>
                             <div class="table-actions">
                                 <a href="{{ route('users.edit', $user) }}" class="btn btn-sm"><i class="bi bi-pencil-square"></i> Modifier</a>
@@ -32,7 +38,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr class="empty-row"><td colspan="4"><i class="bi bi-inbox"></i> Aucun utilisateur.</td></tr>
+                    <tr class="empty-row"><td colspan="5"><i class="bi bi-inbox"></i> Aucun utilisateur.</td></tr>
                 @endforelse
             </tbody>
         </table>
