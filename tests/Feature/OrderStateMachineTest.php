@@ -165,6 +165,31 @@ class OrderStateMachineTest extends TestCase
 
         $this->assertSame(Order::STATUS_ANNULEE, $order->fresh()->status);
         $this->assertSame(10.0, $product->fresh()->currentStock());
+
+        // La Sale née de confirmPayment() doit être verrouillée, sinon le bouton "Retourner"
+        // de la fiche Vente permet de réintégrer une seconde fois ce même stock (double crédit).
+        $sale = $order->fresh()->sale;
+        $this->assertSame(Sale::STATUS_CANCELLED, $sale->status);
+        $this->assertSame(4.0, (float) $sale->lines->first()->returned_quantity);
+        $this->assertSame(0.0, $sale->lines->first()->fresh()->returnableQuantity());
+    }
+
+    public function test_cancelling_after_payment_does_not_allow_a_double_stock_return_via_the_linked_sale(): void
+    {
+        $product = $this->product(10);
+        $customer = $this->customer();
+        $order = Order::place([['product' => $product, 'quantity' => 4]], $customer->id, 'mobile_money_mtn');
+        $order = $order->confirmPayment();
+        $order->cancel(reason: 'Rupture logistique');
+
+        $sale = $order->fresh()->sale;
+        $saleLine = $sale->lines->first();
+
+        $saleLine->returnQuantity($saleLine->returnableQuantity(), $order->customer_id ?? 1);
+
+        // returnQuantity() plafonne sur returnableQuantity() (0 ici) : aucun mouvement de stock
+        // supplémentaire ne doit être créé, le produit doit rester à son stock initial.
+        $this->assertSame(10.0, $product->fresh()->currentStock());
     }
 
     public function test_cancelling_a_terminal_order_is_rejected(): void
@@ -192,6 +217,12 @@ class OrderStateMachineTest extends TestCase
         $this->assertSame(Order::STATUS_RETOURNEE, $order->fresh()->status);
         $this->assertSame(10.0, $product->fresh()->currentStock());
         $this->assertSame(2.0, (float) $order->lines->first()->fresh()->returned_quantity);
+
+        // Même garde-fou qu'à l'annulation : la SaleLine correspondante doit refléter le retour
+        // pour qu'un second retour ne soit pas possible depuis la fiche Vente.
+        $sale = $order->fresh()->sale;
+        $this->assertSame(Sale::STATUS_COMPLETED, $sale->status); // livraison honorée, seule la ligne est retournée
+        $this->assertSame(2.0, (float) $sale->lines->first()->returned_quantity);
     }
 
     public function test_return_before_delivery_is_rejected(): void

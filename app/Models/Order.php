@@ -259,6 +259,13 @@ class Order extends Model
                         subtype: StockMovement::SUBTYPE_RETOUR_CLIENT,
                     );
                 }
+
+                // La Sale née de confirmPayment() doit être verrouillée ici : sans ça, ses
+                // SaleLine.returned_quantity restent à 0 et le bouton "Retourner" de la fiche
+                // Vente permettrait de réintégrer une seconde fois le même stock déjà remis
+                // ci-dessus (double crédit).
+                $this->markSaleLinesReturned();
+                $this->sale?->update(['status' => Sale::STATUS_CANCELLED, 'cancelled_at' => now()]);
             }
 
             $this->update(['status' => self::STATUS_ANNULEE, 'cancelled_at' => now()]);
@@ -301,10 +308,28 @@ class Order extends Model
                 $line->update(['returned_quantity' => $line->quantity]);
             }
 
+            // Même raison qu'en cancel() : garder la SaleLine liée synchronisée pour ne pas
+            // laisser la fiche Vente proposer un second retour sur du stock déjà réintégré ici.
+            $this->markSaleLinesReturned();
+
             $this->update(['status' => self::STATUS_RETOURNEE]);
 
             return $this->fresh();
         });
+    }
+
+    /** Reporte returned_quantity sur les SaleLine correspondantes (appariées par produit) quand une commande réintègre son stock, pour empêcher un double retour depuis la fiche Vente. */
+    private function markSaleLinesReturned(): void
+    {
+        if (! $this->sale) {
+            return;
+        }
+
+        foreach ($this->lines as $orderLine) {
+            $this->sale->lines()
+                ->where('product_id', $orderLine->product_id)
+                ->update(['returned_quantity' => $orderLine->quantity]);
+        }
     }
 
     private function transitionTo(string $target, array $extra = []): self
