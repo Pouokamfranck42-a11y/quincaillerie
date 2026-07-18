@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CustomerController extends Controller
 {
@@ -43,7 +44,7 @@ class CustomerController extends Controller
 
     public function update(Request $request, Customer $customer)
     {
-        $customer->update($this->validated($request));
+        $customer->update($this->validated($request, $customer));
 
         return redirect()->route('customers.index')->with('success', 'Client mis à jour.');
     }
@@ -79,16 +80,18 @@ class CustomerController extends Controller
         return redirect()->route('customers.statement', $customer)->with('success', 'Paiement enregistré.');
     }
 
-    private function validated(Request $request): array
+    private function validated(Request $request, ?Customer $customer = null): array
     {
         return $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
-            'email' => ['nullable', 'email', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255', Rule::unique('customers', 'email')->ignore($customer?->id)],
             'address' => ['nullable', 'string'],
             'type' => ['required', 'in:particulier,professionnel'],
             'credit_limit' => ['required', 'numeric', 'min:0'],
             'payment_terms_days' => ['required', 'integer', 'min:0', 'max:365'],
+        ], [
+            'email.unique' => 'Un client existe déjà avec cette adresse e-mail.',
         ]);
     }
 }

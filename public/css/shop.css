@@ -1,0 +1,85 @@
+/* Boutique en ligne — réutilise les tokens de theme.css (couleurs, rayons, ombres),
+   structure de page différente du back-office (pas de sidebar). */
+
+.shop-body{ background:var(--paper); min-height:100vh; display:flex; flex-direction:column; }
+
+.shop-navbar{
+  background:var(--panel);
+  border-bottom:1px solid var(--steel-200);
+  position:sticky; top:0; z-index:20;
+}
+.shop-navbar-inner{
+  max-width:1200px; margin:0 auto; padding:12px 20px;
+  display:flex; align-items:center; gap:20px;
+}
+.shop-brand{
+  display:flex; align-items:center; gap:8px;
+  font-weight:700; font-size:18px; color:var(--ink); text-decoration:none; flex-shrink:0;
+}
+.shop-brand .dot{ width:10px; height:10px; border-radius:50%; background:var(--primary); display:inline-block; }
+.shop-search{ flex:1; max-width:480px; }
+.shop-nav-actions{ display:flex; align-items:center; gap:10px; margin-left:auto; }
+.shop-icon-link{
+  position:relative; display:inline-flex; align-items:center; justify-content:center;
+  width:38px; height:38px; border-radius:var(--radius); color:var(--ink); font-size:18px;
+  transition:background var(--transition);
+}
+.shop-icon-link:hover{ background:var(--steel-100); }
+.shop-cart-badge{
+  position:absolute; top:2px; right:2px; min-width:16px; height:16px;
+  font-size:10px; padding:0; display:flex; align-items:center; justify-content:center;
+}
+
+.shop-content{ max-width:1200px; margin:0 auto; padding:24px 20px; flex:1; width:100%; }
+
+.shop-footer{
+  text-align:center; padding:24px 20px; color:var(--ink-soft); font-size:13px;
+  border-top:1px solid var(--steel-200); margin-top:32px;
+}
+
+/* Grille catalogue */
+.shop-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:18px; }
+.shop-card{
+  background:var(--panel); border:1px solid var(--steel-200); border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-sm); overflow:hidden; display:flex; flex-direction:column;
+  transition:box-shadow var(--transition), transform var(--transition);
+}
+.shop-card:hover{ box-shadow:var(--shadow); transform:translateY(-2px); }
+.shop-card-media{
+  aspect-ratio:1/1; background:var(--steel-100); display:flex; align-items:center; justify-content:center;
+  color:var(--steel-500); font-size:32px;
+}
+.shop-card-media img{ width:100%; height:100%; object-fit:cover; }
+.shop-card-body{ padding:14px; display:flex; flex-direction:column; gap:6px; flex:1; }
+.shop-card-name{ font-weight:600; font-size:14.5px; color:var(--ink); text-decoration:none; }
+.shop-card-name:hover{ color:var(--primary); }
+.shop-card-price{ font-weight:700; font-size:16px; color:var(--primary-dark); margin-top:auto; }
+
+/* Filtres catégorie */
+.shop-filters{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
+.shop-filter-pill{
+  display:inline-flex; align-items:center; padding:6px 14px; border-radius:var(--radius-pill);
+  border:1px solid var(--steel-200); background:var(--panel); color:var(--ink); text-decoration:none; font-size:13px;
+  transition:all var(--transition);
+}
+.shop-filter-pill.active, .shop-filter-pill:hover{ background:var(--primary); border-color:var(--primary); color:#fff; }
+
+/* Fiche produit */
+.shop-product{ display:grid; grid-template-columns:minmax(0,420px) 1fr; gap:32px; }
+@media (max-width:768px){ .shop-product{ grid-template-columns:1fr; } }
+.shop-product-media{
+  aspect-ratio:1/1; background:var(--panel); border:1px solid var(--steel-200); border-radius:var(--radius-lg);
+  display:flex; align-items:center; justify-content:center; color:var(--steel-500); font-size:64px; overflow:hidden;
+}
+.shop-product-media img{ width:100%; height:100%; object-fit:cover; }
+.shop-variant-pills{ display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 18px; }
+
+/* Panier / checkout */
+.shop-cart-row{ display:flex; align-items:center; gap:16px; padding:14px 0; border-bottom:1px solid var(--steel-200); }
+.shop-cart-row:last-child{ border-bottom:none; }
+.shop-cart-thumb{
+  width:56px; height:56px; border-radius:var(--radius); background:var(--steel-100);
+  display:flex; align-items:center; justify-content:center; color:var(--steel-500); flex-shrink:0;
+}
+.shop-checkout-steps{ display:flex; gap:8px; margin-bottom:20px; font-size:13px; color:var(--ink-soft); }
+.shop-checkout-steps .step.active{ color:var(--primary); font-weight:600; }

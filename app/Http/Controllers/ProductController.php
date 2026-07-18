@@ -45,6 +45,12 @@ class ProductController extends Controller
         $data = $this->validated($request);
         $alternates = $this->alternateSuppliers($request);
 
+        // 'ecommerce.publier' protège ce champ précis, indépendamment de 'produits.creer' —
+        // un produit créé sans ce droit reste simplement non publié (défaut sûr).
+        if (! $request->user()->can('ecommerce.publier')) {
+            unset($data['published_online']);
+        }
+
         $product = Product::create($data);
         $product->alternateSuppliers()->createMany($alternates);
 
@@ -85,6 +91,19 @@ class ProductController extends Controller
 
         $priceFields = ['purchase_price', 'sale_price', 'pro_price'];
         $oldPrices = $product->only($priceFields);
+
+        // Contrôle au niveau du champ, pas de la route : 'produits.modifier' permet d'éditer une
+        // fiche produit, mais 'prix.modifier'/'ecommerce.publier' protègent spécifiquement ces
+        // champs — s'ils sont absents de la requête (permission manquante), on garde la valeur
+        // actuelle plutôt que de rejeter toute la mise à jour.
+        if (! $request->user()->can('prix.modifier')) {
+            foreach ($priceFields as $field) {
+                unset($data[$field]);
+            }
+        }
+        if (! $request->user()->can('ecommerce.publier')) {
+            unset($data['published_online']);
+        }
 
         $product->update($data);
         $product->alternateSuppliers()->delete();
@@ -176,6 +195,7 @@ class ProductController extends Controller
             'max_stock' => ['nullable', 'numeric', 'min:0'],
             'reorder_point' => ['nullable', 'numeric', 'min:0'],
             'tracks_lots' => ['sometimes', 'boolean'],
+            'published_online' => ['sometimes', 'boolean'],
             'variant_attrs' => ['sometimes', 'array'],
             'variant_attrs.*.key' => ['nullable', 'string', 'max:100'],
             'variant_attrs.*.value' => ['nullable', 'string', 'max:255'],
@@ -196,6 +216,7 @@ class ProductController extends Controller
 
         $data['active'] = $request->boolean('active');
         $data['tracks_lots'] = $request->boolean('tracks_lots');
+        $data['published_online'] = $request->boolean('published_online');
 
         if ($request->hasFile('photo')) {
             $data['photo_path'] = $request->file('photo')->store('products', 'public');

@@ -14,7 +14,7 @@ class Product extends Model
         'purchase_price', 'sale_price', 'pro_price', 'barcode', 'location', 'unit',
         'sale_unit', 'sale_unit_factor', 'purchase_unit', 'purchase_unit_factor',
         'low_stock_threshold', 'security_stock', 'max_stock', 'reorder_point', 'tracks_lots', 'active',
-        'product_family_id', 'variant_attributes',
+        'product_family_id', 'variant_attributes', 'published_online',
     ];
 
     protected $casts = [
@@ -29,17 +29,25 @@ class Product extends Model
         'reorder_point' => 'decimal:2',
         'tracks_lots' => 'boolean',
         'active' => 'boolean',
+        'published_online' => 'boolean',
         'variant_attributes' => 'array',
     ];
+
+    /** Catalogue web (Phase 5) : actifs et explicitement publiés par l'admin. */
+    public function scopePublished($query)
+    {
+        return $query->where('active', true)->where('published_online', true);
+    }
 
     public function category()
     {
         return $this->belongsTo(Category::class);
     }
 
+    /** withTrashed() : le fournisseur principal reste affichable même s'il a été archivé depuis. */
     public function supplier()
     {
-        return $this->belongsTo(Supplier::class);
+        return $this->belongsTo(Supplier::class)->withTrashed();
     }
 
     /** Fournisseurs secondaires (le fournisseur principal reste supplier()). */
@@ -84,6 +92,16 @@ class Product extends Model
         return $this->hasMany(SaleLine::class);
     }
 
+    public function orderLines()
+    {
+        return $this->hasMany(OrderLine::class);
+    }
+
+    public function reservations()
+    {
+        return $this->hasMany(Reservation::class);
+    }
+
     public function purchaseOrderLines()
     {
         return $this->hasMany(PurchaseOrderLine::class);
@@ -108,10 +126,16 @@ class Product extends Model
             ->sum('quantity');
     }
 
-    /** Stock physique moins la quantité réservée par des devis acceptés. */
+    /** Quantité retenue par des réservations actives (StockService) — comptoir et web confondus. */
+    public function activeReservationsStock(): float
+    {
+        return (float) $this->reservations()->where('status', Reservation::STATUS_ACTIVE)->sum('quantity');
+    }
+
+    /** Stock physique moins les devis acceptés et les réservations actives — c'est le "disponible" du modèle à 3 niveaux. */
     public function availableStock(): float
     {
-        return $this->currentStock() - $this->reservedStock();
+        return $this->currentStock() - $this->reservedStock() - $this->activeReservationsStock();
     }
 
     /** Quantité en cours de commande fournisseur (en unité de stock), pas encore réceptionnée. */
