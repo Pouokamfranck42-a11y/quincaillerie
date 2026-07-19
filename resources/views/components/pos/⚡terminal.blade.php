@@ -255,10 +255,34 @@ new class extends Component
         session()->flash('auto_print', true);
         $this->redirectRoute('invoices.show', $invoice);
     }
+
+    /** Entrée dans la recherche quand un seul résultat correspond = l'ajouter directement, sans avoir à cliquer (interface caisse rapide, Phase 4). */
+    public function addFirstResultIfSingle(): void
+    {
+        if ($this->results->count() === 1) {
+            $this->addToCart($this->results->first()->id);
+        }
+    }
 };
 ?>
 
-<div class="pos-grid">
+<div
+    class="pos-grid"
+    x-data
+    @keydown.window="
+        // Raccourcis interface caisse rapide (Phase 4) : '/' ramène toujours au champ de
+        // recherche (sauf en train de taper ailleurs), Échap le vide et le refocus.
+        if ($event.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes($event.target.tagName)) {
+            $event.preventDefault();
+            $refs.searchInput.focus();
+            $refs.searchInput.select();
+        }
+        if ($event.key === 'Escape' && $event.target === $refs.searchInput) {
+            $refs.searchInput.value = '';
+            $refs.searchInput.dispatchEvent(new Event('input'));
+        }
+    "
+>
     <div>
         <div class="pos-search">
             <div class="input-group">
@@ -266,14 +290,19 @@ new class extends Component
                 <input
                     type="search"
                     id="pos-search-input"
+                    x-ref="searchInput"
                     class="border-start-0 ps-0"
                     wire:model.live.debounce.250ms="search"
-                    placeholder="Rechercher un produit par nom, référence ou code-barres…"
+                    wire:keydown.enter="addFirstResultIfSingle"
+                    placeholder="Rechercher un produit par nom, référence ou code-barres… (raccourci : /)"
                     autofocus
                 >
             </div>
             <div wire:ignore>
                 <x-barcode-scan target="pos-search-input" />
+            </div>
+            <div class="muted" style="font-size:11px; margin-top:4px">
+                <kbd>/</kbd> rechercher · <kbd>Entrée</kbd> ajouter si un seul résultat · <kbd>Échap</kbd> effacer
             </div>
         </div>
 

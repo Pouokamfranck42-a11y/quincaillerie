@@ -97,4 +97,41 @@ class PosTerminalTest extends TestCase
 
         $this->assertDatabaseCount('sales', 0);
     }
+
+    /** Interface caisse rapide (Phase 4) : Entrée dans la recherche = ajout direct si un seul résultat correspond, sans avoir à cliquer. */
+    public function test_pressing_enter_adds_the_single_matching_result_to_the_cart(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::create([
+            'reference' => 'POS-RACCOURCI', 'name' => 'Marteau unique', 'purchase_price' => 100, 'sale_price' => 200,
+            'unit' => 'unité', 'low_stock_threshold' => 5,
+        ]);
+        StockMovement::create(['product_id' => $product->id, 'type' => StockMovement::TYPE_ENTREE, 'quantity' => 10]);
+        $session = $this->makeSession($user);
+
+        Livewire::actingAs($user)
+            ->test('pos.terminal', ['session' => $session])
+            ->set('search', 'Marteau unique')
+            ->call('addFirstResultIfSingle')
+            ->assertSet('cart', [$product->id => 1]);
+    }
+
+    public function test_pressing_enter_does_nothing_when_search_matches_several_products(): void
+    {
+        $user = User::factory()->create();
+        foreach (['POS-MULTI-1', 'POS-MULTI-2'] as $reference) {
+            $product = Product::create([
+                'reference' => $reference, 'name' => 'Vis multiple', 'purchase_price' => 100, 'sale_price' => 200,
+                'unit' => 'unité', 'low_stock_threshold' => 5,
+            ]);
+            StockMovement::create(['product_id' => $product->id, 'type' => StockMovement::TYPE_ENTREE, 'quantity' => 10]);
+        }
+        $session = $this->makeSession($user);
+
+        Livewire::actingAs($user)
+            ->test('pos.terminal', ['session' => $session])
+            ->set('search', 'Vis multiple')
+            ->call('addFirstResultIfSingle')
+            ->assertSet('cart', []);
+    }
 }
