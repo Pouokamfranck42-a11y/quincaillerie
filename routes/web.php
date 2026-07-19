@@ -11,6 +11,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DormantStockController;
 use App\Http\Controllers\InventoryCountController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\NotificationController;
@@ -38,6 +39,7 @@ use App\Http\Controllers\Shop\ResetPasswordController as ShopResetPasswordContro
 use App\Http\Controllers\Shop\NotificationController as ShopNotificationController;
 use App\Http\Controllers\Shop\PaymentSimulationController as ShopPaymentSimulationController;
 use App\Http\Controllers\Shop\RegisterController as ShopRegisterController;
+use App\Http\Controllers\SmartReorderController;
 use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\StockReportController;
 use App\Http\Controllers\StockTransferController;
@@ -146,6 +148,8 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/purchase-orders/suggestions', [PurchaseOrderController::class, 'suggestions'])->name('purchase-orders.suggestions')->middleware('permission:achats.voir');
     Route::post('/purchase-orders/suggestions', [PurchaseOrderController::class, 'createSuggestions'])->name('purchase-orders.create-suggestions')->middleware('permission:achats.gerer');
+    Route::get('/reapprovisionnement-intelligent', [SmartReorderController::class, 'index'])->name('reorder.index')->middleware('permission:achats.voir');
+    Route::get('/articles-dormants', [DormantStockController::class, 'index'])->name('dormant-stock.index')->middleware('permission:rapports.voir');
     Route::middleware('permission:achats.gerer')->group(function () {
         Route::get('/purchase-orders/import-invoice', [PurchaseInvoiceImportController::class, 'create'])->name('purchase-orders.import-invoice');
         Route::post('/purchase-orders/import-invoice/analyze', [PurchaseInvoiceImportController::class, 'analyze'])->name('purchase-orders.import-invoice.analyze');

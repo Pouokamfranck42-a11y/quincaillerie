@@ -165,6 +165,119 @@ class Product extends Model
         return $this->availableStock() + $this->incomingStock() <= $this->effectiveReorderPoint();
     }
 
+    public function dailySalesVelocity(): float
+    {
+        return $this->forecastedMonthlyDemand() / 30;
+    }
+
+    /** Jours avant rupture au rythme de vente actuel — null si aucun signal de vente récent (rien à projeter). */
+    public function daysOfStockRemaining(): ?float
+    {
+        $velocity = $this->dailySalesVelocity();
+
+        return $velocity > 0 ? round($this->availableStock() / $velocity, 1) : null;
+    }
+
+    public function projectedStockoutDate(): ?\Illuminate\Support\Carbon
+    {
+        $days = $this->daysOfStockRemaining();
+
+        return $days !== null ? now()->addDays((int) ceil(max($days, 0))) : null;
+    }
+
+    /**
+     * Date limite pour passer la commande sans risquer la rupture, compte tenu du délai de
+     * livraison du fournisseur (Supplier::lead_time_days — jusqu'ici jamais exploité, le point
+     * de commande était une valeur statique déconnectée du délai réel). Null si pas de
+     * fournisseur renseigné ou pas de signal de vente exploitable.
+     */
+    public function recommendedOrderByDate(): ?\Illuminate\Support\Carbon
+    {
+        $stockout = $this->projectedStockoutDate();
+
+        if ($stockout === null || ! $this->supplier) {
+            return null;
+        }
+
+        return $stockout->copy()->subDays($this->supplier->lead_time_days);
+    }
+
+    /** La date limite de commande est déjà dépassée ou tombe dans les 3 prochains jours. */
+    public function isUrgentReorder(): bool
+    {
+        $orderBy = $this->recommendedOrderByDate();
+
+        return $orderBy !== null && $orderBy->lte(now()->addDays(3));
+    }
+
+    /**
+     * Signal léger de saisonnalité : compare les 30 derniers jours de sorties à la même fenêtre
+     * calendaire un an plus tôt. Null si l'historique ne remonte pas encore jusque-là (rien à
+     * comparer) ou si le volume de l'an dernier est trop faible pour un ratio fiable.
+     */
+    public function seasonalityNote(): ?string
+    {
+        $lastYearWindowStart = now()->subYear()->subDays(15);
+        $lastYearWindowEnd = now()->subYear()->addDays(15);
+
+        if (! $this->stockMovements()->where('created_at', '<=', $lastYearWindowEnd)->exists()) {
+            return null;
+        }
+
+        $recent = abs((float) $this->stockMovements()
+            ->where('type', StockMovement::TYPE_SORTIE)
+            ->where('created_at', '>=', now()->subDays(30))
+            ->sum('quantity'));
+
+        $lastYear = abs((float) $this->stockMovements()
+            ->where('type', StockMovement::TYPE_SORTIE)
+            ->whereBetween('created_at', [$lastYearWindowStart, $lastYearWindowEnd])
+            ->sum('quantity'));
+
+        if ($lastYear < 1) {
+            return null;
+        }
+
+        $ratio = $recent / $lastYear;
+
+        if ($ratio >= 1.5) {
+            return 'Ventes en hausse (×'.round($ratio, 1).') par rapport à la même période l\'an dernier — probable effet saisonnier.';
+        }
+        if ($ratio <= 0.5) {
+            return 'Ventes ralenties par rapport à la même période l\'an dernier.';
+        }
+
+        return null;
+    }
+
+    /** Dernière sortie de stock enregistrée pour ce produit (vente, quel que soit le canal) — null si jamais vendu. */
+    public function daysSinceLastSale(): ?int
+    {
+        $last = $this->stockMovements()->where('type', StockMovement::TYPE_SORTIE)->max('created_at');
+
+        // diffInDays() est signé et de précision flottante depuis Carbon 2 — abs()+floor() avant
+        // la coercition vers ?int (une conversion float->int implicite est dépréciée en PHP 8.1+).
+        return $last ? (int) floor(abs(now()->diffInDays(\Illuminate\Support\Carbon::parse($last)))) : null;
+    }
+
+    /** Dormant : du stock, mais aucune sortie depuis au moins $days jours (ou jamais vendu du tout). */
+    public function isDormant(int $days = 90): bool
+    {
+        if ($this->currentStock() <= 0) {
+            return false;
+        }
+
+        $sinceLastSale = $this->daysSinceLastSale();
+
+        return $sinceLastSale === null || $sinceLastSale >= $days;
+    }
+
+    /** Argent immobilisé dans le stock actuel de ce produit, au coût d'achat. */
+    public function capitalTiedUp(): float
+    {
+        return round($this->currentStock() * (float) $this->purchase_price, 2);
+    }
+
     /**
      * Prévision de la demande mensuelle par moyenne mobile pondérée sur les 6 derniers mois de
      * sorties de stock (les mois les plus récents pèsent davantage) — plus réactive aux tendances

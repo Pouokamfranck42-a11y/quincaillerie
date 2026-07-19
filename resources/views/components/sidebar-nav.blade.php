@@ -51,6 +51,7 @@
             @endcan
             @can('achats.voir')
                 <a href="{{ route('purchase-orders.index') }}" class="{{ request()->routeIs('purchase-orders.*') ? 'active' : '' }}"><i class="bi bi-cart3"></i> Commandes fournisseur</a>
+                <a href="{{ route('reorder.index') }}" class="{{ request()->routeIs('reorder.*') ? 'active' : '' }}"><i class="bi bi-robot"></i> Réappro intelligent</a>
             @endcan
             @can('stock.transferer')
                 <a href="{{ route('stock-transfers.index') }}" class="{{ request()->routeIs('stock-transfers.*') ? 'active' : '' }}"><i class="bi bi-arrow-repeat"></i> Transferts</a>
@@ -67,6 +68,7 @@
             <a href="{{ route('reports.index') }}" class="{{ request()->routeIs('reports.index') ? 'active' : '' }}"><i class="bi bi-graph-up"></i> Rapports ventes</a>
             <a href="{{ route('reports.stock') }}" class="{{ request()->routeIs('reports.stock') ? 'active' : '' }}"><i class="bi bi-bar-chart"></i> Rapports stock</a>
             <a href="{{ route('reports.customer-credit') }}" class="{{ request()->routeIs('reports.customer-credit') ? 'active' : '' }}"><i class="bi bi-cash-coin"></i> Encours clients</a>
+            <a href="{{ route('dormant-stock.index') }}" class="{{ request()->routeIs('dormant-stock.*') ? 'active' : '' }}"><i class="bi bi-robot"></i> Articles dormants</a>
         @endcan
         @can('ia.previsions')
             <a href="{{ route('reports.cash-flow') }}" class="{{ request()->routeIs('reports.cash-flow') ? 'active' : '' }}"><i class="bi bi-cash-stack"></i> Prévision de trésorerie</a>
