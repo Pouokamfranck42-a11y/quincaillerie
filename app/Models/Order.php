@@ -118,6 +118,10 @@ class Order extends Model
         ?string $deliveryNotes = null,
     ): self {
         return DB::transaction(function () use ($cartItems, $customerId, $paymentMethod, $fulfillmentType, $taxRate, $channel, $deliveryAddress, $deliveryPhone, $deliveryNotes) {
+            foreach ($cartItems as $item) {
+                $item['product']->assertValidSaleQuantity((float) $item['quantity']);
+            }
+
             $customer = Customer::findOrFail($customerId);
 
             $subtotal = array_reduce(

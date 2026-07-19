@@ -153,6 +153,21 @@
         <div class="hint">Unité dans laquelle le stock est suivi (mètre, kg, unité…).</div>
     </div>
 </div>
+
+@php $initialSoldByCut = (bool) old('sold_by_cut', $product->sold_by_cut ?? false); @endphp
+<div class="field" x-data="{ soldByCut: {{ $initialSoldByCut ? 'true' : 'false' }} }">
+    <label style="display:flex; align-items:center; gap:8px; font-weight:400;">
+        <input type="checkbox" name="sold_by_cut" value="1" style="width:auto" x-model="soldByCut" @checked($initialSoldByCut)>
+        Vendu à la découpe (câble, tuyau, chaîne…)
+    </label>
+    <div class="hint">La quantité vendue doit alors être un multiple exact du pas ci-dessous — en caisse comme en boutique en ligne.</div>
+    <div class="field" x-show="soldByCut" style="margin-top:8px; max-width:220px">
+        <label for="cut_step">Pas de découpe (en {{ old('unit', $product->unit ?? 'mètre') }})</label>
+        <input type="number" step="0.001" min="0.001" id="cut_step" name="cut_step" value="{{ old('cut_step', $product->cut_step ?? 0.5) }}">
+        <div class="hint">Ex : 0.5 → vendable par 0.5 m, 1 m, 1.5 m…</div>
+        @error('cut_step') <div class="error">{{ $message }}</div> @enderror
+    </div>
+</div>
 <div class="field-row">
     <div class="field">
         <label for="sale_unit">Unité de vente (optionnel)</label>
@@ -215,6 +230,6 @@
             <input type="checkbox" name="published_online" value="1" style="width:auto" @checked(old('published_online', $product->published_online ?? false))>
             Publier sur la boutique en ligne
         </label>
-        <div class="hint">Au lancement : ne cocher que pour les articles simples vendus à l'unité (pas la découpe au mètre, pas le très lourd à livrer).</div>
+        <div class="hint">Les articles vendus à la découpe sont publiables normalement — la boutique respecte automatiquement le pas défini ci-dessus. Réfléchissez en revanche pour le très lourd/encombrant à livrer, pas encore géré par le tunnel de commande.</div>
     </div>
 @endcan

@@ -31,6 +31,8 @@ class CartController extends Controller
 
         $product = Product::where('id', $data['product_id'])->published()->firstOrFail();
 
+        $product->assertValidSaleQuantity((float) $data['quantity']);
+
         if ((float) $data['quantity'] > $product->availableStock()) {
             throw ValidationException::withMessages([
                 'quantity' => "Seulement {$product->availableStock()} {$product->unit} disponible(s) pour {$product->name}.",
@@ -59,6 +61,11 @@ class CartController extends Controller
 
                 continue;
             }
+
+            if ($product = Product::find($productId)) {
+                $product->assertValidSaleQuantity((float) $quantity);
+            }
+
             $cart[$productId] = (float) $quantity;
         }
 

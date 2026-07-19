@@ -54,9 +54,13 @@
                 <form method="POST" action="{{ route('shop.cart.store') }}" class="flex" style="align-items:flex-end; gap:12px">
                     @csrf
                     <input type="hidden" name="product_id" value="{{ $product->id }}">
-                    <div class="field" style="max-width:120px">
+                    @php $step = $product->sold_by_cut ? (float) $product->cut_step : 0.01; @endphp
+                    <div class="field" style="max-width:160px">
                         <label for="quantity">Quantité ({{ $product->unit }})</label>
-                        <input type="number" id="quantity" name="quantity" value="1" min="0.01" max="{{ $available }}" step="0.01" required>
+                        <input type="number" id="quantity" name="quantity" value="{{ $step }}" min="{{ $step }}" max="{{ $available }}" step="{{ $step }}" required>
+                        @if ($product->sold_by_cut)
+                            <div class="hint">Vendu par pas de {{ rtrim(rtrim(number_format($step, 3, ',', ' '), '0'), ',') }} {{ $product->unit }}.</div>
+                        @endif
                     </div>
                     <button type="submit" class="btn btn-primary"><i class="bi bi-cart-plus"></i> Ajouter au panier</button>
                 </form>

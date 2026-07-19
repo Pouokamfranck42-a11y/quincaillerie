@@ -85,6 +85,10 @@ class Sale extends Model
         ?float $amountTendered = null,
     ): self {
         return DB::transaction(function () use ($cartItems, $session, $userId, $customerId, $paymentMethod, $taxRate, $amountTendered) {
+            foreach ($cartItems as $item) {
+                $item['product']->assertValidSaleQuantity((float) $item['quantity']);
+            }
+
             $customer = $customerId ? Customer::find($customerId) : null;
 
             $subtotal = array_reduce(

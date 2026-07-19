@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Validation\ValidationException;
 
 class Product extends Model
 {
@@ -11,7 +12,7 @@ class Product extends Model
 
     protected $fillable = [
         'reference', 'name', 'brand', 'description', 'photo_path', 'category_id', 'supplier_id', 'supplier_sku',
-        'purchase_price', 'sale_price', 'pro_price', 'barcode', 'location', 'unit',
+        'purchase_price', 'sale_price', 'pro_price', 'barcode', 'location', 'unit', 'sold_by_cut', 'cut_step',
         'sale_unit', 'sale_unit_factor', 'purchase_unit', 'purchase_unit_factor',
         'low_stock_threshold', 'security_stock', 'max_stock', 'reorder_point', 'tracks_lots', 'active',
         'product_family_id', 'variant_attributes', 'published_online',
@@ -23,11 +24,13 @@ class Product extends Model
         'pro_price' => 'decimal:2',
         'sale_unit_factor' => 'decimal:3',
         'purchase_unit_factor' => 'decimal:3',
+        'cut_step' => 'decimal:3',
         'low_stock_threshold' => 'decimal:2',
         'security_stock' => 'decimal:2',
         'max_stock' => 'decimal:2',
         'reorder_point' => 'decimal:2',
         'tracks_lots' => 'boolean',
+        'sold_by_cut' => 'boolean',
         'active' => 'boolean',
         'published_online' => 'boolean',
         'variant_attributes' => 'array',
@@ -242,6 +245,29 @@ class Product extends Model
     public function toStockQuantity(float $purchaseQuantity): float
     {
         return round($purchaseQuantity * (float) $this->purchase_unit_factor, 2);
+    }
+
+    /**
+     * Vente à la découpe (câble, tuyau, chaîne...) : la quantité doit être un multiple du
+     * pas défini (ex. 0.5 m), pas n'importe quelle décimale arbitraire. Ne change rien pour
+     * les produits non marqués sold_by_cut — comportement identique à avant cette fonction.
+     * Vérifié au point de passage commun (Sale::checkout(), Order::place()) plutôt que
+     * dans chaque contrôleur, pour ne jamais dépendre de l'endroit d'où la vente est déclenchée.
+     */
+    public function assertValidSaleQuantity(float $quantity): void
+    {
+        if (! $this->sold_by_cut) {
+            return;
+        }
+
+        $step = (float) $this->cut_step ?: 1.0;
+        $steps = round($quantity / $step, 4);
+
+        if (abs($steps - round($steps)) > 0.001) {
+            throw ValidationException::withMessages([
+                'quantity' => "{$this->name} se vend par pas de ".rtrim(rtrim(number_format($step, 3, '.', ''), '0'), '.')." {$this->unit} (ex : ".rtrim(rtrim(number_format($step * 2, 3, '.', ''), '0'), '.').', '.rtrim(rtrim(number_format($step * 3, 3, '.', ''), '0'), '.').'...).',
+            ]);
+        }
     }
 
     /**

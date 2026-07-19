@@ -90,6 +90,8 @@ new class extends Component
                 'quantity' => $quantity,
                 'lot' => $lot,
                 'available' => $product->availableStock(),
+                'sold_by_cut' => $product->sold_by_cut,
+                'cut_step' => (float) $product->cut_step,
             ];
         });
     }
@@ -194,6 +196,18 @@ new class extends Component
             'quantity' => $quantity,
         ])->values()->all();
 
+        // Vérification amont pour un message inline cohérent avec le reste du composant
+        // (addError + return) — Sale::checkout() revérifie de toute façon en autorité.
+        foreach ($cartItems as $item) {
+            try {
+                $item['product']->assertValidSaleQuantity((float) $item['quantity']);
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                $this->addError('cart', $e->validator->errors()->first('quantity'));
+
+                return;
+            }
+        }
+
         $sale = Sale::checkout(
             $cartItems,
             $session,
@@ -284,10 +298,13 @@ new class extends Component
                     @if ($overstocked)
                         <br><span style="font-size:11px; color:var(--crit, #DC2626)"><i class="bi bi-exclamation-triangle-fill"></i> disponible : {{ rtrim(rtrim(number_format($line['available'], 2, ',', ' '), '0'), ',') }}</span>
                     @endif
+                    @if ($line['sold_by_cut'])
+                        <br><span class="muted" style="font-size:11px">pas de {{ rtrim(rtrim(number_format($line['cut_step'], 3, ',', ' '), '0'), ',') }} {{ $line['unit'] }}</span>
+                    @endif
                 </span>
                 <input
                     type="number"
-                    step="0.01"
+                    step="{{ $line['sold_by_cut'] ? $line['cut_step'] : 0.01 }}"
                     min="0"
                     value="{{ $line['quantity'] }}"
                     wire:change="updateQuantity({{ $line['product_id'] }}, $event.target.value)"

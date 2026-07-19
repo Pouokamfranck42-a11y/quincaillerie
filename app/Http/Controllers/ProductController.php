@@ -186,6 +186,8 @@ class ProductController extends Controller
             'barcode' => ['nullable', 'string', 'max:100', 'unique:products,barcode'.($ignoreId ? ",{$ignoreId}" : '')],
             'location' => ['nullable', 'string', 'max:255'],
             'unit' => ['required', 'string', 'max:50'],
+            'sold_by_cut' => ['sometimes', 'boolean'],
+            'cut_step' => ['required_if:sold_by_cut,1', 'nullable', 'numeric', 'min:0.001'],
             'sale_unit' => ['nullable', 'string', 'max:50'],
             'sale_unit_factor' => ['required', 'numeric', 'min:0.001'],
             'purchase_unit' => ['nullable', 'string', 'max:50'],
@@ -217,6 +219,8 @@ class ProductController extends Controller
         $data['active'] = $request->boolean('active');
         $data['tracks_lots'] = $request->boolean('tracks_lots');
         $data['published_online'] = $request->boolean('published_online');
+        $data['sold_by_cut'] = $request->boolean('sold_by_cut');
+        $data['cut_step'] = $data['sold_by_cut'] ? $data['cut_step'] : 1;
 
         if ($request->hasFile('photo')) {
             $data['photo_path'] = $request->file('photo')->store('products', 'public');
