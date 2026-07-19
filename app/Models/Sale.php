@@ -183,20 +183,25 @@ class Sale extends Model
      */
     public function cancel(int $userId, ?string $reason = null): self
     {
-        if ($this->status === self::STATUS_CANCELLED) {
-            return $this;
-        }
+        return DB::transaction(function () use ($userId, $reason) {
+            // Verrouille la vente AVANT de lire son statut : sans ça, deux annulations
+            // concurrentes (double-clic, requête rejouée) liraient toutes les deux un statut
+            // "avant" périmé et réintégreraient le stock deux fois.
+            $sale = self::where('id', $this->id)->lockForUpdate()->firstOrFail();
 
-        if ($this->session->status !== CashRegisterSession::STATUS_OPEN) {
-            throw ValidationException::withMessages([
-                'sale' => "Cette vente appartient à une session de caisse déjà clôturée — utilisez le retour ligne par ligne plutôt que l'annulation complète.",
-            ]);
-        }
+            if ($sale->status === self::STATUS_CANCELLED) {
+                return $sale; // déjà annulée — idempotent, on ne réintègre pas une seconde fois
+            }
 
-        DB::transaction(function () use ($userId, $reason) {
+            if ($sale->session->status !== CashRegisterSession::STATUS_OPEN) {
+                throw ValidationException::withMessages([
+                    'sale' => "Cette vente appartient à une session de caisse déjà clôturée — utilisez le retour ligne par ligne plutôt que l'annulation complète.",
+                ]);
+            }
+
             $stockService = app(\App\Services\Stock\StockService::class);
 
-            foreach ($this->lines as $line) {
+            foreach ($sale->lines as $line) {
                 $returnable = $line->returnableQuantity();
 
                 if ($returnable > 0) {
@@ -205,7 +210,7 @@ class Sale extends Model
                         quantity: $returnable,
                         reference: $line,
                         userId: $userId,
-                        reason: $reason ?? 'Annulation vente #'.$this->id,
+                        reason: $reason ?? 'Annulation vente #'.$sale->id,
                         subtype: StockMovement::SUBTYPE_ANNULATION_VENTE,
                         lotId: $line->lot_id,
                     );
@@ -213,12 +218,12 @@ class Sale extends Model
                 }
             }
 
-            $oldValues = ['status' => $this->status];
-            $this->update(['status' => self::STATUS_CANCELLED, 'cancelled_at' => now()]);
+            $oldValues = ['status' => $sale->status];
+            $sale->update(['status' => self::STATUS_CANCELLED, 'cancelled_at' => now()]);
 
-            AuditLog::record('sale.cancelled', $this, $oldValues, ['status' => self::STATUS_CANCELLED, 'reason' => $reason], $userId);
+            AuditLog::record('sale.cancelled', $sale, $oldValues, ['status' => self::STATUS_CANCELLED, 'reason' => $reason], $userId);
+
+            return $sale->fresh();
         });
-
-        return $this->fresh();
     }
 }

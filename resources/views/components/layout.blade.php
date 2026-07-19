@@ -74,6 +74,20 @@
                     @if (session('error'))
                         <div class="alert alert-crit"><i class="bi bi-exclamation-triangle-fill"></i> <span>{{ session('error') }}</span></div>
                     @endif
+                    @if ($errors->any())
+                        {{-- back()->withErrors() (ValidationException, y compris celles levées depuis les
+                             modèles/services comme StockService) remplit ce sac d'erreurs standard Laravel —
+                             sans cet affichage générique, un rejet métier (transition invalide, verrou
+                             contesté, stock insuffisant) échoue silencieusement, sans aucun retour visible. --}}
+                        <div class="alert alert-crit">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            <span>
+                                @foreach ($errors->all() as $error)
+                                    {{ $error }}@if (! $loop->last)<br>@endif
+                                @endforeach
+                            </span>
+                        </div>
+                    @endif
 
                     {{ $slot }}
                 </main>

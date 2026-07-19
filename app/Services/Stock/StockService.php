@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\Reservation;
 use App\Models\StockMovement;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -23,6 +24,41 @@ use Illuminate\Validation\ValidationException;
  */
 class StockService
 {
+    /** Au-delà de ce délai d'attente sur un verrou produit contesté, on abandonne plutôt que de bloquer indéfiniment (et, avec le serveur de dev mono-worker, toute l'application avec). */
+    private const LOCK_TIMEOUT = '5s';
+
+    /**
+     * Verrouille la ligne produit (SELECT ... FOR UPDATE), avec un timeout borné : sans ça,
+     * un verrou contesté (ex. un achat en boutique sur le même article pendant une annulation
+     * côté comptoir) attend indéfiniment — PostgreSQL n'a par défaut ni lock_timeout ni
+     * statement_timeout, et le serveur de développement ne traite qu'une requête à la fois,
+     * donc un seul verrou bloqué gèle l'application entière pour tout le monde.
+     */
+    private function lockProduct(int $productId): Product
+    {
+        try {
+            // set_config(..., true) = portée LOCAL (annulée au COMMIT/ROLLBACK) — contrairement à SET,
+            // qui n'accepte pas de paramètre lié pour sa valeur, set_config() est une fonction normale.
+            DB::statement("SELECT set_config('lock_timeout', ?, true)", [self::LOCK_TIMEOUT]);
+
+            return Product::where('id', $productId)->lockForUpdate()->firstOrFail();
+        } catch (QueryException $e) {
+            if ($this->isLockTimeout($e)) {
+                throw ValidationException::withMessages([
+                    'stock' => "Ce produit est en cours de modification par une autre opération — réessayez dans quelques secondes.",
+                ]);
+            }
+
+            throw $e;
+        }
+    }
+
+    /** SQLSTATE 55P03 = lock_not_available (PostgreSQL), déclenché par le lock_timeout ci-dessus. */
+    private function isLockTimeout(QueryException $e): bool
+    {
+        return $e->getCode() === '55P03' || str_contains($e->getMessage(), 'lock timeout');
+    }
+
     /**
      * Réserve une quantité si elle est disponible, sinon lève une ValidationException
      * (même convention que le reste de l'app, ex. le plafond de crédit dans Sale::checkout()).
@@ -37,7 +73,7 @@ class StockService
         $expiresAt = null,
     ): Reservation {
         return DB::transaction(function () use ($product, $quantity, $channel, $reservable, $userId, $warehouseId, $expiresAt) {
-            $locked = Product::where('id', $product->id)->lockForUpdate()->firstOrFail();
+            $locked = $this->lockProduct($product->id);
 
             $available = $locked->availableStock();
             if ($available < $quantity) {
@@ -64,7 +100,7 @@ class StockService
     public function release(Reservation $reservation, string $status = Reservation::STATUS_RELEASED): Reservation
     {
         return DB::transaction(function () use ($reservation, $status) {
-            Product::where('id', $reservation->product_id)->lockForUpdate()->first();
+            $this->lockProduct($reservation->product_id);
 
             if ($reservation->status !== Reservation::STATUS_ACTIVE) {
                 return $reservation;
@@ -84,7 +120,7 @@ class StockService
     public function deduct(Reservation $reservation, ?int $userId = null, ?string $reason = null, ?Model $reference = null, ?int $lotId = null): StockMovement
     {
         return DB::transaction(function () use ($reservation, $userId, $reason, $reference, $lotId) {
-            $product = Product::where('id', $reservation->product_id)->lockForUpdate()->firstOrFail();
+            $product = $this->lockProduct($reservation->product_id);
 
             if ($reservation->status !== Reservation::STATUS_ACTIVE) {
                 throw new \RuntimeException("Réservation #{$reservation->id} n'est plus active — déduction impossible.");
@@ -145,7 +181,7 @@ class StockService
         ?int $warehouseId = null,
     ): StockMovement {
         return DB::transaction(function () use ($product, $quantity, $reference, $userId, $reason, $subtype, $lotId, $warehouseId) {
-            Product::where('id', $product->id)->lockForUpdate()->firstOrFail();
+            $this->lockProduct($product->id);
 
             return StockMovement::create([
                 'product_id' => $product->id,

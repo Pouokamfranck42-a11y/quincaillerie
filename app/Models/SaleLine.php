@@ -44,24 +44,31 @@ class SaleLine extends Model
     /** Retour client : réintègre le stock et trace le retour. Ne modifie pas le montant déjà encaissé. */
     public function returnQuantity(float $quantity, int $byUserId, ?string $reason = null): void
     {
-        $quantity = min($quantity, $this->returnableQuantity());
-
-        if ($quantity <= 0) {
-            return;
-        }
-
         DB::transaction(function () use ($quantity, $byUserId, $reason) {
+            // Verrouille la ligne AVANT de recalculer la quantité retournable : sans ça, deux
+            // retours concurrents sur la même ligne (double-clic) liraient tous les deux le même
+            // returned_quantity "avant" périmé, réintégreraient chacun leur part, et le second
+            // update() écraserait le premier au lieu de s'additionner — double crédit silencieux.
+            $line = self::where('id', $this->id)->lockForUpdate()->firstOrFail();
+            $actualQuantity = min($quantity, $line->returnableQuantity());
+
+            if ($actualQuantity <= 0) {
+                return;
+            }
+
             app(\App\Services\Stock\StockService::class)->reintegrate(
-                product: $this->product,
-                quantity: $quantity,
-                reference: $this->sale,
+                product: $line->product,
+                quantity: $actualQuantity,
+                reference: $line->sale,
                 userId: $byUserId,
-                reason: $reason ?? 'Retour client — vente #'.$this->sale_id,
+                reason: $reason ?? 'Retour client — vente #'.$line->sale_id,
                 subtype: StockMovement::SUBTYPE_RETOUR_CLIENT,
-                lotId: $this->lot_id,
+                lotId: $line->lot_id,
             );
 
-            $this->update(['returned_quantity' => (float) $this->returned_quantity + $quantity]);
+            $line->update(['returned_quantity' => (float) $line->returned_quantity + $actualQuantity]);
         });
+
+        $this->refresh();
     }
 }

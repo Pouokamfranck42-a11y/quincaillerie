@@ -238,24 +238,29 @@ class Order extends Model
      */
     public function cancel(?int $userId = null, ?string $reason = null): self
     {
-        $this->assertCanTransitionTo(self::STATUS_ANNULEE);
-
         return DB::transaction(function () use ($userId, $reason) {
-            $stockService = app(StockService::class);
-            $previousStatus = $this->status;
+            // Verrouille la commande AVANT de lire son statut : deux annulations concurrentes
+            // (double-clic, deux onglets) liraient sinon toutes les deux un statut "avant" périmé
+            // et réintégreraient le stock deux fois. La seconde attend ici, puis se voit rejetée
+            // par assertCanTransitionTo() une fois qu'elle relit le statut à jour — idempotent.
+            $order = self::where('id', $this->id)->lockForUpdate()->firstOrFail();
+            $order->assertCanTransitionTo(self::STATUS_ANNULEE);
 
-            if ($this->status === self::STATUS_RESERVEE) {
-                foreach ($this->reservations()->where('status', Reservation::STATUS_ACTIVE)->get() as $reservation) {
+            $stockService = app(StockService::class);
+            $previousStatus = $order->status;
+
+            if ($order->status === self::STATUS_RESERVEE) {
+                foreach ($order->reservations()->where('status', Reservation::STATUS_ACTIVE)->get() as $reservation) {
                     $stockService->release($reservation);
                 }
             } else {
-                foreach ($this->lines as $line) {
+                foreach ($order->lines as $line) {
                     $stockService->reintegrate(
                         product: $line->product,
                         quantity: (float) $line->quantity,
-                        reference: $this,
+                        reference: $order,
                         userId: $userId,
-                        reason: $reason ?? 'Annulation commande #'.$this->id,
+                        reason: $reason ?? 'Annulation commande #'.$order->id,
                         subtype: StockMovement::SUBTYPE_RETOUR_CLIENT,
                     );
                 }
@@ -264,33 +269,36 @@ class Order extends Model
                 // SaleLine.returned_quantity restent à 0 et le bouton "Retourner" de la fiche
                 // Vente permettrait de réintégrer une seconde fois le même stock déjà remis
                 // ci-dessus (double crédit).
-                $this->markSaleLinesReturned();
-                $this->sale?->update(['status' => Sale::STATUS_CANCELLED, 'cancelled_at' => now()]);
+                $order->markSaleLinesReturned();
+                $order->sale?->update(['status' => Sale::STATUS_CANCELLED, 'cancelled_at' => now()]);
             }
 
-            $this->update(['status' => self::STATUS_ANNULEE, 'cancelled_at' => now()]);
+            $order->update(['status' => self::STATUS_ANNULEE, 'cancelled_at' => now()]);
 
             AuditLog::record(
                 'order.cancelled',
-                $this,
+                $order,
                 ['status' => $previousStatus],
                 ['status' => self::STATUS_ANNULEE, 'reason' => $reason],
                 $userId,
             );
 
-            return $this->fresh();
+            return $order->fresh();
         });
     }
 
     /** Retour après livraison/retrait — le stock est réintégré (marchandise physiquement rendue). */
     public function returnOrder(?int $userId = null, ?string $reason = null): self
     {
-        $this->assertCanTransitionTo(self::STATUS_RETOURNEE);
-
         return DB::transaction(function () use ($userId, $reason) {
+            // Même garde-fou qu'en cancel() : verrouiller la commande avant de lire son statut
+            // empêche un double retour si l'action est rejouée/dupliquée pendant qu'elle tourne.
+            $order = self::where('id', $this->id)->lockForUpdate()->firstOrFail();
+            $order->assertCanTransitionTo(self::STATUS_RETOURNEE);
+
             $stockService = app(StockService::class);
 
-            foreach ($this->lines as $line) {
+            foreach ($order->lines as $line) {
                 $remaining = (float) $line->quantity - (float) $line->returned_quantity;
                 if ($remaining <= 0) {
                     continue;
@@ -299,9 +307,9 @@ class Order extends Model
                 $stockService->reintegrate(
                     product: $line->product,
                     quantity: $remaining,
-                    reference: $this,
+                    reference: $order,
                     userId: $userId,
-                    reason: $reason ?? 'Retour commande #'.$this->id,
+                    reason: $reason ?? 'Retour commande #'.$order->id,
                     subtype: StockMovement::SUBTYPE_RETOUR_CLIENT,
                 );
 
@@ -310,11 +318,11 @@ class Order extends Model
 
             // Même raison qu'en cancel() : garder la SaleLine liée synchronisée pour ne pas
             // laisser la fiche Vente proposer un second retour sur du stock déjà réintégré ici.
-            $this->markSaleLinesReturned();
+            $order->markSaleLinesReturned();
 
-            $this->update(['status' => self::STATUS_RETOURNEE]);
+            $order->update(['status' => self::STATUS_RETOURNEE]);
 
-            return $this->fresh();
+            return $order->fresh();
         });
     }
 
