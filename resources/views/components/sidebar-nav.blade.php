@@ -79,6 +79,7 @@
         @can('configuration.systeme')
             <a href="{{ route('warehouses.index') }}" class="{{ request()->routeIs('warehouses.*') ? 'active' : '' }}"><i class="bi bi-building"></i> Entrepôts</a>
             <a href="{{ route('audit-logs.index') }}" class="{{ request()->routeIs('audit-logs.*') ? 'active' : '' }}"><i class="bi bi-journal-text"></i> Journal d'audit</a>
+            <a href="{{ route('error-logs.index') }}" class="{{ request()->routeIs('error-logs.*') ? 'active' : '' }}"><i class="bi bi-bug"></i> Journal des erreurs</a>
             <a href="{{ route('trash.index') }}" class="{{ request()->routeIs('trash.*') ? 'active' : '' }}"><i class="bi bi-trash3"></i> Corbeille</a>
         @endcan
     @endif

@@ -1,11 +1,16 @@
 <?php
 
 use App\Models\AuditLog;
+use App\Models\ErrorLog;
+use App\Models\User;
+use App\Notifications\CriticalErrorOccurred;
+use App\Support\ExceptionClassifier;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\Exceptions\UnauthorizedException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -37,6 +42,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('app:release-expired-reservations')
             ->everyFiveMinutes()
             ->appendOutputTo(storage_path('logs/schedule.log'));
+        $schedule->command('app:backup-database')
+            ->dailyAt('02:00')
+            ->appendOutputTo(storage_path('logs/backup.log'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
@@ -55,5 +63,28 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return response()->view('errors.403', [], 403);
+        });
+
+        // Log serveur systématique (Phase 1 — gestion d'erreurs uniforme) : toute exception
+        // qui n'est pas un rejet métier attendu est enregistrée dans error_logs — table
+        // consultable par le staff (AdministrationController) et source de l'alerte email
+        // (CriticalErrorOccurred). Ne doit jamais elle-même faire échouer la requête : une
+        // panne d'écriture du log ne doit pas transformer une erreur gérable en page blanche.
+        $exceptions->reportable(function (\Throwable $e) {
+            if (ExceptionClassifier::isRoutine($e)) {
+                return;
+            }
+
+            try {
+                $errorLog = ErrorLog::recordFrom($e, request());
+
+                $admins = User::role('admin')->get();
+                if ($admins->isNotEmpty()) {
+                    Notification::send($admins, new CriticalErrorOccurred($errorLog));
+                }
+            } catch (\Throwable) {
+                // Le report() original de Laravel a déjà écrit dans storage/logs/laravel.log
+                // avant d'arriver ici — rien de plus à faire si CETTE couche échoue à son tour.
+            }
         });
     })->create();

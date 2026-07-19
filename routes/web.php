@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountingExportController;
 use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\ErrorLogController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\CashFlowReportController;
 use App\Http\Controllers\CashRegisterSessionController;
@@ -72,6 +73,7 @@ Route::middleware('auth')->group(function () {
         ->middlewareFor(['create', 'store', 'edit', 'update', 'destroy'], 'permission:clients.gerer');
     Route::get('/customers/{customer}/statement', [CustomerController::class, 'statement'])->name('customers.statement')->middleware('permission:clients.voir');
     Route::post('/customers/{customer}/sales/{sale}/payment', [CustomerController::class, 'recordPayment'])->name('customers.record-payment')->middleware('permission:clients.gerer');
+    Route::post('/customers/{customer}/reset-password', [CustomerController::class, 'sendPasswordReset'])->name('customers.send-password-reset')->middleware('permission:clients.gerer');
 
     Route::resource('quotes', QuoteController::class)->only(['index', 'create', 'store', 'show'])->middleware('permission:ventes.creer');
     Route::post('/quotes/{quote}/convert', [QuoteController::class, 'convert'])->name('quotes.convert')->middleware('permission:ventes.creer');
@@ -168,6 +170,7 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('warehouses', WarehouseController::class)->except(['show', 'destroy'])->middleware('permission:configuration.systeme');
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index')->middleware('permission:configuration.systeme');
+    Route::get('/error-logs', [ErrorLogController::class, 'index'])->name('error-logs.index')->middleware('permission:configuration.systeme');
 
     Route::middleware('permission:configuration.systeme')->group(function () {
         Route::get('/trash', [TrashController::class, 'index'])->name('trash.index');
