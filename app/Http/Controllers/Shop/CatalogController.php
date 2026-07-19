@@ -14,19 +14,25 @@ class CatalogController extends Controller
     {
         $query = Product::published()->with(['category', 'family']);
 
-        if ($search = $request->string('q')->trim()->value()) {
+        $search = $request->string('q')->trim()->value();
+        if ($search) {
+            // Même logique que Product::scopeSearch() (pg_trgm) avec la marque en plus, propre
+            // à la boutique — voir ChatbotTools::searchProducts() pour la même raison de ne pas
+            // imbriquer le scope partagé ici (son orderByRaw ne survivrait pas au grouping).
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'ilike', "%{$search}%")
                     ->orWhere('reference', 'ilike', "%{$search}%")
-                    ->orWhere('brand', 'ilike', "%{$search}%");
-            });
+                    ->orWhere('brand', 'ilike', "%{$search}%")
+                    ->orWhereRaw('similarity(name, ?) > 0.15', [$search])
+                    ->orWhereRaw('similarity(reference, ?) > 0.15', [$search]);
+            })->orderByRaw('GREATEST(similarity(name, ?), similarity(reference, ?)) DESC', [$search, $search]);
         }
 
         if ($categoryId = $request->integer('categorie')) {
             $query->where('category_id', $categoryId);
         }
 
-        $products = $query->orderBy('name')->paginate(12)->withQueryString();
+        $products = $search ? $query->paginate(12)->withQueryString() : $query->orderBy('name')->paginate(12)->withQueryString();
         $categories = Category::whereHas('products', fn ($q) => $q->published())->orderBy('name')->get();
 
         return view('shop.catalog.index', compact('products', 'categories'));

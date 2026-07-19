@@ -53,11 +53,7 @@ new class extends Component
 
         return Product::query()
             ->where('active', true)
-            ->where(function ($q) {
-                $q->where('name', 'ilike', "%{$this->search}%")
-                    ->orWhere('reference', 'ilike', "%{$this->search}%")
-                    ->orWhere('barcode', $this->search);
-            })
+            ->search($this->search)
             ->withSum('stockMovements as stock_quantity', 'quantity')
             ->limit(12)
             ->get();

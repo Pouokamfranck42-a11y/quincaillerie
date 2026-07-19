@@ -18,15 +18,12 @@ class ProductController extends Controller
         $query = Product::with(['category', 'supplier'])
             ->withSum('stockMovements as stock_quantity', 'quantity');
 
-        if ($search = $request->string('q')->trim()->value()) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'ilike', "%{$search}%")
-                    ->orWhere('reference', 'ilike', "%{$search}%")
-                    ->orWhere('barcode', 'ilike', "%{$search}%");
-            });
+        $search = $request->string('q')->trim()->value();
+        if ($search) {
+            $query->search($search);
         }
 
-        $products = $query->orderBy('name')->paginate(20)->withQueryString();
+        $products = $search ? $query->paginate(20)->withQueryString() : $query->orderBy('name')->paginate(20)->withQueryString();
 
         return view('products.index', compact('products'));
     }

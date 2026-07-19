@@ -85,12 +85,19 @@ class ChatbotTools
             return 'Aucun terme de recherche fourni.';
         }
 
+        // Même logique que Product::scopeSearch() (pg_trgm, rattrape les fautes de frappe) —
+        // dupliquée plutôt qu'appelée ici, avec description en plus : imbriquer un scope qui
+        // pose son propre orderByRaw() dans un where(Closure) ne s'appliquerait pas à la requête
+        // externe (le grouping de where(Closure) ne porte que sur les conditions, pas l'ordre).
         $products = Product::where('active', true)
             ->where(function ($q) use ($query) {
                 $q->where('name', 'ilike', "%{$query}%")
                     ->orWhere('reference', 'ilike', "%{$query}%")
-                    ->orWhere('description', 'ilike', "%{$query}%");
+                    ->orWhere('description', 'ilike', "%{$query}%")
+                    ->orWhereRaw('similarity(name, ?) > 0.15', [$query])
+                    ->orWhereRaw('similarity(reference, ?) > 0.15', [$query]);
             })
+            ->orderByRaw('GREATEST(similarity(name, ?), similarity(reference, ?)) DESC', [$query, $query])
             ->limit(8)
             ->get();
 

@@ -42,6 +42,31 @@ class Product extends Model
         return $query->where('active', true)->where('published_online', true);
     }
 
+    /**
+     * Recherche tolérante aux fautes de frappe (Phase 4) : combine la correspondance exacte/
+     * substring habituelle (toujours incluse, jamais régressée) avec un repli par similarité de
+     * trigrammes (pg_trgm — voir migration 2026_07_19_130000) qui rattrape une lettre manquante,
+     * un accent oublié ou une lettre substituée ("perceuze" trouve "Perceuse..."). Seuil à 0.15,
+     * calibré empiriquement (0.25 ratait déjà des typos à une seule lettre sur des noms courts).
+     * Utilisé partout où un client/employé tape une recherche produit — un seul endroit définit
+     * la règle, pour qu'elle ne diverge jamais entre le catalogue, le POS, la boutique et le chatbot.
+     */
+    public function scopeSearch($query, string $term)
+    {
+        $term = trim($term);
+        if ($term === '') {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($term) {
+            $q->where('name', 'ilike', "%{$term}%")
+                ->orWhere('reference', 'ilike', "%{$term}%")
+                ->orWhere('barcode', $term)
+                ->orWhereRaw('similarity(name, ?) > 0.15', [$term])
+                ->orWhereRaw('similarity(reference, ?) > 0.15', [$term]);
+        })->orderByRaw('GREATEST(similarity(name, ?), similarity(reference, ?)) DESC', [$term, $term]);
+    }
+
     public function category()
     {
         return $this->belongsTo(Category::class);
