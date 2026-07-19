@@ -5,6 +5,7 @@ use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\ErrorLogController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\CashFlowReportController;
+use App\Http\Controllers\CustomerCreditReportController;
 use App\Http\Controllers\CashRegisterSessionController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ChatbotController;
@@ -160,6 +161,7 @@ Route::middleware('auth')->group(function () {
     // --- Pilotage ---
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index')->middleware('permission:rapports.voir');
     Route::get('/reports/stock', [StockReportController::class, 'index'])->name('reports.stock')->middleware('permission:rapports.voir');
+    Route::get('/reports/encours-clients', [CustomerCreditReportController::class, 'index'])->name('reports.customer-credit')->middleware('permission:rapports.voir');
     Route::get('/reports/cash-flow', [CashFlowReportController::class, 'index'])->name('reports.cash-flow')->middleware('permission:ia.previsions');
     Route::get('/export-comptable', [AccountingExportController::class, 'index'])->name('accounting-export.index')->middleware('permission:rapports.exporter');
     Route::get('/export-comptable/telecharger', [AccountingExportController::class, 'export'])->name('accounting-export.export')->middleware('permission:rapports.exporter');

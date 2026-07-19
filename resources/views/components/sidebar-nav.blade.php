@@ -63,6 +63,7 @@
         @can('rapports.voir')
             <a href="{{ route('reports.index') }}" class="{{ request()->routeIs('reports.index') ? 'active' : '' }}"><i class="bi bi-graph-up"></i> Rapports ventes</a>
             <a href="{{ route('reports.stock') }}" class="{{ request()->routeIs('reports.stock') ? 'active' : '' }}"><i class="bi bi-bar-chart"></i> Rapports stock</a>
+            <a href="{{ route('reports.customer-credit') }}" class="{{ request()->routeIs('reports.customer-credit') ? 'active' : '' }}"><i class="bi bi-cash-coin"></i> Encours clients</a>
         @endcan
         @can('ia.previsions')
             <a href="{{ route('reports.cash-flow') }}" class="{{ request()->routeIs('reports.cash-flow') ? 'active' : '' }}"><i class="bi bi-cash-stack"></i> Prévision de trésorerie</a>
