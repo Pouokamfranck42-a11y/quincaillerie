@@ -40,6 +40,45 @@
         </div>
     </div>
 
+    <div class="stat-grid">
+        <div class="stat-tile">
+            <div class="lbl"><i class="bi bi-box-seam"></i> Valeur du stock</div>
+            <div class="val">{{ number_format($stockValue, 0, ',', ' ') }}</div>
+            <div class="sub">au coût d'achat</div>
+        </div>
+        <div class="stat-tile">
+            <div class="lbl"><i class="bi bi-arrow-repeat"></i> Taux de rotation</div>
+            <div class="val">{{ $turnoverRate }}×</div>
+            <div class="sub">sur 90 jours</div>
+        </div>
+        <div class="stat-tile">
+            <div class="lbl"><i class="bi bi-percent"></i> Marge</div>
+            <div class="val">{{ $marginPercent }}%</div>
+            <div class="sub">sur 90 jours</div>
+        </div>
+        <div class="stat-tile @if($stockoutCount > 0) crit @endif">
+            <div class="lbl"><i class="bi bi-x-octagon"></i> Ruptures</div>
+            <div class="val">{{ $stockoutCount }}</div>
+            <div class="sub">stock à zéro</div>
+        </div>
+        <div class="stat-tile @if($dormantCount > 0) warn @endif">
+            <div class="lbl"><i class="bi bi-hourglass-split"></i> Articles dormants</div>
+            <div class="val">{{ $dormantCount }}</div>
+            <div class="sub">
+                @can('rapports.voir')
+                    <a href="{{ route('dormant-stock.index') }}">voir le détail <i class="bi bi-arrow-right"></i></a>
+                @else
+                    argent immobilisé
+                @endcan
+            </div>
+        </div>
+        <div class="stat-tile @if($overstockCount > 0) warn @endif">
+            <div class="lbl"><i class="bi bi-boxes"></i> Surstock</div>
+            <div class="val">{{ $overstockCount }}</div>
+            <div class="sub">au-delà du stock max</div>
+        </div>
+    </div>
+
     @if (auth()->user()->canAny(['rapports.voir', 'ia.previsions']))
         <div class="stat-grid" style="grid-template-columns:repeat(auto-fit, minmax(230px,1fr)); margin-bottom:26px;">
             @can('rapports.voir')
