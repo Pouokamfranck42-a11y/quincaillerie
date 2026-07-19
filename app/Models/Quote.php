@@ -15,7 +15,7 @@ class Quote extends Model
 
     protected $fillable = [
         'customer_id', 'user_id', 'subtotal', 'tax_rate', 'tax_amount', 'total',
-        'status', 'sale_id', 'valid_until', 'notes',
+        'status', 'sale_id', 'order_id', 'valid_until', 'notes',
     ];
 
     protected $casts = [
@@ -46,6 +46,11 @@ class Quote extends Model
     public function sale()
     {
         return $this->belongsTo(Sale::class);
+    }
+
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
     }
 
     /**
@@ -84,6 +89,51 @@ class Quote extends Model
             $quote->update(['status' => self::STATUS_CONVERTI, 'sale_id' => $sale->id]);
 
             return $sale;
+        });
+    }
+
+    /**
+     * Convertit le devis en commande (Order::place()) plutôt qu'en vente comptoir : réserve
+     * le stock (StockService, niveau "réservé") sans le déduire physiquement ni encaisser tout
+     * de suite — pour un client qui valide un devis mais vient chercher/se faire livrer la
+     * marchandise plus tard. Même garde-fou de verrouillage que convertToSale().
+     */
+    public function convertToOrder(string $paymentMethod, string $fulfillmentType = Order::FULFILLMENT_RETRAIT, ?string $deliveryAddress = null, ?string $deliveryPhone = null): Order
+    {
+        return DB::transaction(function () use ($paymentMethod, $fulfillmentType, $deliveryAddress, $deliveryPhone) {
+            $quote = self::where('id', $this->id)->lockForUpdate()->firstOrFail();
+
+            if ($quote->status === self::STATUS_CONVERTI) {
+                throw ValidationException::withMessages([
+                    'quote' => 'Ce devis a déjà été converti.',
+                ]);
+            }
+
+            if (! $quote->customer_id) {
+                throw ValidationException::withMessages([
+                    'quote' => 'Un client est requis pour convertir ce devis en commande (contrairement à la vente comptoir, une commande n\'a pas de "client de passage").',
+                ]);
+            }
+
+            $cartItems = $quote->lines->map(fn (QuoteLine $line) => [
+                'product' => $line->product,
+                'quantity' => $line->quantity,
+            ])->all();
+
+            $order = Order::place(
+                $cartItems,
+                $quote->customer_id,
+                $paymentMethod,
+                $fulfillmentType,
+                (float) $quote->tax_rate,
+                Order::CHANNEL_COMPTOIR,
+                $deliveryAddress,
+                $deliveryPhone,
+            );
+
+            $quote->update(['status' => self::STATUS_CONVERTI, 'order_id' => $order->id]);
+
+            return $order;
         });
     }
 }

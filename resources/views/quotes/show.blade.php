@@ -6,9 +6,21 @@
                 @if ($quote->valid_until) · valable jusqu'au {{ $quote->valid_until->format('d/m/Y') }} @endif
             </p>
         </div>
-        @if ($quote->status === 'converti')
-            <span class="badge badge-good">converti en vente #{{ $quote->sale_id }}</span>
-        @endif
+        <div class="flex">
+            <a href="{{ route('quotes.print', $quote) }}" class="btn" target="_blank"><i class="bi bi-printer"></i> Imprimer</a>
+            @if ($quote->status === 'converti')
+                @if ($quote->sale_id)
+                    <span class="badge badge-good">converti en vente #{{ $quote->sale_id }}</span>
+                @elseif ($quote->order_id)
+                    <span class="badge badge-good">
+                        converti en commande #{{ $quote->order_id }}
+                        @can('ecommerce.commandes')
+                            · <a href="{{ route('online-orders.show', $quote->order_id) }}">voir</a>
+                        @endcan
+                    </span>
+                @endif
+            @endif
+        </div>
     </div>
 
     @error('credit') <div class="alert alert-crit"><i class="bi bi-exclamation-triangle-fill"></i> <span>{{ $message }}</span></div> @enderror
@@ -43,7 +55,7 @@
     @if ($quote->status !== 'converti')
         <div class="card">
             <div class="card-head"><h2><i class="bi bi-arrow-repeat"></i> Convertir en vente</h2></div>
-            <p>La vente sera rattachée à votre session de caisse actuellement ouverte.</p>
+            <p>Encaissement immédiat, rattaché à votre session de caisse actuellement ouverte — stock déduit tout de suite.</p>
             <form method="POST" action="{{ route('quotes.convert', $quote) }}" class="flex">
                 @csrf
                 <select name="payment_method" required>
@@ -56,6 +68,37 @@
                 </select>
                 <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Convertir en vente</button>
             </form>
+        </div>
+
+        <div class="card" x-data="{ fulfillment: 'retrait' }">
+            <div class="card-head"><h2><i class="bi bi-box-seam"></i> Convertir en commande</h2></div>
+            @if (! $quote->customer_id)
+                <p class="muted"><i class="bi bi-exclamation-triangle"></i> Un client est requis sur ce devis pour cette option (contrairement à la vente comptoir).</p>
+            @else
+                <p>Réserve le stock sans l'encaisser ni le déduire tout de suite — le client paiera à la remise (retrait ou livraison), comme une commande boutique. Suivi ensuite depuis "Commandes en ligne".</p>
+                @error('quote') <div class="alert alert-crit"><i class="bi bi-exclamation-triangle-fill"></i> <span>{{ $message }}</span></div> @enderror
+                <form method="POST" action="{{ route('quotes.convert-to-order', $quote) }}">
+                    @csrf
+                    <div class="field-row">
+                        <div class="field">
+                            <label for="fulfillment_type">Remise</label>
+                            <select id="fulfillment_type" name="fulfillment_type" x-model="fulfillment">
+                                <option value="retrait">Retrait en magasin</option>
+                                <option value="livraison">Livraison</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="delivery_phone">Téléphone (optionnel)</label>
+                            <input type="text" id="delivery_phone" name="delivery_phone" value="{{ $quote->customer->phone }}">
+                        </div>
+                    </div>
+                    <div class="field" x-show="fulfillment === 'livraison'">
+                        <label for="delivery_address">Adresse de livraison</label>
+                        <textarea id="delivery_address" name="delivery_address" rows="2">{{ $quote->customer->address }}</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-box-seam"></i> Convertir en commande</button>
+                </form>
+            @endif
         </div>
     @endif
 </x-layout>

@@ -94,4 +94,42 @@ class QuoteController extends Controller
 
         return redirect()->route('quotes.show', $quote)->with('success', 'Devis converti en vente #'.$sale->id.'.');
     }
+
+    /**
+     * Convertit en commande plutôt qu'en vente comptoir : réserve le stock sans encaisser
+     * ni déduire physiquement tout de suite (paiement à la remise, comme les commandes web
+     * — réutilise le même workflow de confirmation déjà en place dans OnlineOrderController).
+     */
+    public function convertToOrder(Request $request, Quote $quote)
+    {
+        if ($quote->status === Quote::STATUS_CONVERTI) {
+            return back()->with('error', 'Ce devis a déjà été converti.');
+        }
+
+        $data = $request->validate([
+            'fulfillment_type' => ['required', 'in:retrait,livraison'],
+            'delivery_address' => ['required_if:fulfillment_type,livraison', 'nullable', 'string'],
+            'delivery_phone' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $quote->load('lines.product');
+        $order = $quote->convertToOrder(
+            'a_la_livraison',
+            $data['fulfillment_type'],
+            $data['delivery_address'] ?? null,
+            $data['delivery_phone'] ?? null,
+        );
+
+        // Retour sur la fiche devis (toujours accessible à qui vient de la consulter) plutôt
+        // que sur la commande elle-même, qui exige la permission ecommerce.commandes — pas
+        // forcément détenue par qui crée des devis (ventes.creer).
+        return redirect()->route('quotes.show', $quote)->with('success', 'Devis converti en commande #'.$order->id.' — stock réservé.');
+    }
+
+    public function print(Quote $quote)
+    {
+        $quote->load(['customer', 'user', 'lines.product']);
+
+        return view('quotes.print', compact('quote'));
+    }
 }

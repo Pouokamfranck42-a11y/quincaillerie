@@ -78,6 +78,8 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('quotes', QuoteController::class)->only(['index', 'create', 'store', 'show'])->middleware('permission:ventes.creer');
     Route::post('/quotes/{quote}/convert', [QuoteController::class, 'convert'])->name('quotes.convert')->middleware('permission:ventes.creer');
+    Route::post('/quotes/{quote}/convert-to-order', [QuoteController::class, 'convertToOrder'])->name('quotes.convert-to-order')->middleware('permission:ventes.creer');
+    Route::get('/quotes/{quote}/print', [QuoteController::class, 'print'])->name('quotes.print')->middleware('permission:ventes.creer');
 
     Route::get('/sales', [SaleController::class, 'index'])->name('sales.index')->middleware('permission:ventes.historique');
     Route::get('/sales/{sale}', [SaleController::class, 'show'])->name('sales.show')->middleware('permission:ventes.historique');
