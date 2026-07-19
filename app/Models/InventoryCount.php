@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\Ai\AnomalyDetector;
+use App\Services\Stock\StockService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
@@ -56,6 +57,8 @@ class InventoryCount extends Model
         }
 
         DB::transaction(function () use ($byUserId) {
+            $stockService = app(StockService::class);
+
             foreach ($this->lines as $line) {
                 if ($line->counted_quantity === null) {
                     continue;
@@ -67,17 +70,15 @@ class InventoryCount extends Model
                     continue;
                 }
 
-                StockMovement::create([
-                    'product_id' => $line->product_id,
-                    'warehouse_id' => $this->warehouse_id,
-                    'type' => StockMovement::TYPE_AJUSTEMENT,
-                    'subtype' => StockMovement::SUBTYPE_INVENTAIRE,
-                    'quantity' => $delta,
-                    'reason' => 'Écart d\'inventaire #'.$this->id,
-                    'reference_type' => self::class,
-                    'reference_id' => $this->id,
-                    'user_id' => $byUserId,
-                ]);
+                $stockService->adjust(
+                    product: $line->product,
+                    delta: $delta,
+                    reference: $this,
+                    userId: $byUserId,
+                    reason: 'Écart d\'inventaire #'.$this->id,
+                    subtype: StockMovement::SUBTYPE_INVENTAIRE,
+                    warehouseId: $this->warehouse_id,
+                );
 
                 AnomalyDetector::checkInventoryDiscrepancy($line, $line->product);
             }

@@ -7,10 +7,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Services\Payment\AggregatorPaymentProvider;
+use App\Services\Payment\PaymentWebhookPayload;
 use App\Services\Payment\SimulatedPaymentProvider;
+use App\Support\DatabaseLock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Point d'entrée public (pas d'auth, pas de CSRF — appelé par le serveur de
@@ -31,8 +34,27 @@ class WebhookController extends Controller
 
         $payload = $paymentProvider->parseWebhookPayload($request);
 
+        try {
+            return $this->process($payload, $provider, $request);
+        } catch (ValidationException $e) {
+            // Verrou contesté (voir DatabaseLock) : 503 pour que l'agrégateur rejoue
+            // l'événement plus tard plutôt que de le considérer définitivement échoué.
+            Log::warning('Webhook paiement : verrou contesté, réessai demandé à l\'agrégateur', [
+                'provider' => $provider, 'reference' => $payload->reference,
+            ]);
+
+            return response()->json(['status' => 'retry_later'], 503);
+        }
+    }
+
+    private function process(PaymentWebhookPayload $payload, string $provider, Request $request)
+    {
         return DB::transaction(function () use ($payload, $provider, $request) {
-            $payment = Payment::where('provider_reference', $payload->reference)->lockForUpdate()->first();
+            $payment = DatabaseLock::guard(
+                fn () => Payment::where('provider_reference', $payload->reference)->lockForUpdate()->first(),
+                'payment',
+                'Paiement en cours de traitement par une autre opération.',
+            );
 
             if (! $payment) {
                 Log::warning('Webhook paiement : référence inconnue, ignoré', [

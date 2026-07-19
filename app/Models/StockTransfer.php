@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Stock\StockService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
@@ -40,6 +41,9 @@ class StockTransfer extends Model
     /**
      * Exécute le transfert : une sortie au site d'origine, une entrée au site de destination,
      * pour chaque ligne — le stock ne bouge jamais tant que le transfert n'est pas exécuté.
+     * Passe par StockService (noyau unifié) : la sortie vérifie la disponibilité et verrouille
+     * le produit avant d'agir, contrairement à un StockMovement::create() direct qui pourrait
+     * faire passer le stock en négatif sans jamais être bloqué par une vente concurrente.
      */
     public function execute(int $byUserId): void
     {
@@ -48,30 +52,28 @@ class StockTransfer extends Model
         }
 
         DB::transaction(function () use ($byUserId) {
-            foreach ($this->lines as $line) {
-                StockMovement::create([
-                    'product_id' => $line->product_id,
-                    'warehouse_id' => $this->from_warehouse_id,
-                    'type' => StockMovement::TYPE_SORTIE,
-                    'subtype' => StockMovement::SUBTYPE_TRANSFERT,
-                    'quantity' => -$line->quantity,
-                    'reason' => 'Transfert #'.$this->id.' vers '.$this->toWarehouse->name,
-                    'reference_type' => self::class,
-                    'reference_id' => $this->id,
-                    'user_id' => $byUserId,
-                ]);
+            $stockService = app(StockService::class);
 
-                StockMovement::create([
-                    'product_id' => $line->product_id,
-                    'warehouse_id' => $this->to_warehouse_id,
-                    'type' => StockMovement::TYPE_ENTREE,
-                    'subtype' => StockMovement::SUBTYPE_TRANSFERT,
-                    'quantity' => $line->quantity,
-                    'reason' => 'Transfert #'.$this->id.' depuis '.$this->fromWarehouse->name,
-                    'reference_type' => self::class,
-                    'reference_id' => $this->id,
-                    'user_id' => $byUserId,
-                ]);
+            foreach ($this->lines as $line) {
+                $stockService->withdraw(
+                    product: $line->product,
+                    quantity: (float) $line->quantity,
+                    reference: $this,
+                    userId: $byUserId,
+                    reason: 'Transfert #'.$this->id.' vers '.$this->toWarehouse->name,
+                    subtype: StockMovement::SUBTYPE_TRANSFERT,
+                    warehouseId: $this->from_warehouse_id,
+                );
+
+                $stockService->reintegrate(
+                    product: $line->product,
+                    quantity: (float) $line->quantity,
+                    reference: $this,
+                    userId: $byUserId,
+                    reason: 'Transfert #'.$this->id.' depuis '.$this->fromWarehouse->name,
+                    subtype: StockMovement::SUBTYPE_TRANSFERT,
+                    warehouseId: $this->to_warehouse_id,
+                );
             }
 
             $this->update(['status' => self::STATUS_COMPLETED, 'completed_at' => now()]);

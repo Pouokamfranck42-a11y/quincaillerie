@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Stock\StockService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
@@ -96,6 +97,8 @@ class PurchaseOrder extends Model
         }
 
         DB::transaction(function () use ($byUserId, $receivedQuantities) {
+            $stockService = app(StockService::class);
+
             foreach ($this->lines as $line) {
                 $requested = array_key_exists($line->id, $receivedQuantities)
                     ? (float) $receivedQuantities[$line->id]
@@ -112,20 +115,18 @@ class PurchaseOrder extends Model
                 $stockQuantity = $product->toStockQuantity($qtyToReceive);
                 $stockUnitCost = round($this->landedUnitPrice($line) / $factor, 4);
 
-                // Le CUMP doit être recalculé AVANT que le mouvement ne modifie le stock courant.
-                $product->applyCump($stockQuantity, $stockUnitCost);
-
-                StockMovement::create([
-                    'product_id' => $line->product_id,
-                    'warehouse_id' => $this->warehouse_id,
-                    'type' => StockMovement::TYPE_ENTREE,
-                    'quantity' => $stockQuantity,
-                    'unit_cost' => $stockUnitCost,
-                    'reason' => 'Réception commande fournisseur #'.$this->id,
-                    'reference_type' => self::class,
-                    'reference_id' => $this->id,
-                    'user_id' => $byUserId,
-                ]);
+                // receivePurchase() verrouille le produit AVANT de recalculer le CUMP et
+                // d'écrire l'entrée, sous le même verrou : deux réceptions concurrentes du
+                // même produit ne peuvent plus produire un CUMP corrompu (lost update).
+                $stockService->receivePurchase(
+                    product: $product,
+                    quantity: $stockQuantity,
+                    unitCost: $stockUnitCost,
+                    reference: $this,
+                    userId: $byUserId,
+                    reason: 'Réception commande fournisseur #'.$this->id,
+                    warehouseId: $this->warehouse_id,
+                );
 
                 $line->update(['received_quantity' => (float) $line->received_quantity + $qtyToReceive]);
             }

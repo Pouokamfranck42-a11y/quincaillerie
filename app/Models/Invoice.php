@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\DatabaseLock;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -50,15 +51,28 @@ class Invoice extends Model
             }
 
             $year = now()->year;
-            $counter = InvoiceCounter::where('year', $year)->lockForUpdate()->first();
 
-            if (! $counter) {
-                try {
-                    $counter = InvoiceCounter::create(['year' => $year, 'last_number' => 0]);
-                } catch (QueryException $e) {
-                    $counter = InvoiceCounter::where('year', $year)->lockForUpdate()->firstOrFail();
-                }
-            }
+            // Cette ligne de compteur est partagée par TOUTE la facturation de l'année — le
+            // point de contention le plus probable de l'application. DatabaseLock borne
+            // l'attente : sans ça, une transaction bloquée gèlerait toute génération de
+            // facture suivante, indéfiniment (même défaut que le bug de figeage déjà corrigé).
+            $counter = DatabaseLock::guard(
+                function () use ($year) {
+                    $counter = InvoiceCounter::where('year', $year)->lockForUpdate()->first();
+
+                    if (! $counter) {
+                        try {
+                            $counter = InvoiceCounter::create(['year' => $year, 'last_number' => 0]);
+                        } catch (QueryException $e) {
+                            $counter = InvoiceCounter::where('year', $year)->lockForUpdate()->firstOrFail();
+                        }
+                    }
+
+                    return $counter;
+                },
+                'invoice',
+                'Génération de facture en cours par une autre opération — réessayez dans quelques secondes.',
+            );
 
             $counter->increment('last_number');
 

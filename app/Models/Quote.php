@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class Quote extends Model
 {
@@ -49,25 +51,39 @@ class Quote extends Model
     /**
      * Convertit le devis en vente en réutilisant Sale::checkout(), avec la session
      * de caisse actuellement ouverte de l'utilisateur qui effectue la conversion.
+     * Verrouille le devis AVANT de relire son statut : sans ça, un double-clic sur
+     * "convertir" peut faire passer deux requêtes concurrentes le contrôle de statut
+     * avant que l'une des deux ait écrit — deux Sale créées, stock déduit deux fois pour
+     * un seul devis (même défaut déjà corrigé pour Order::cancel()/Sale::cancel()).
      */
     public function convertToSale(CashRegisterSession $session, int $userId, string $paymentMethod): Sale
     {
-        $cartItems = $this->lines->map(fn (QuoteLine $line) => [
-            'product' => $line->product,
-            'quantity' => $line->quantity,
-        ])->all();
+        return DB::transaction(function () use ($session, $userId, $paymentMethod) {
+            $quote = self::where('id', $this->id)->lockForUpdate()->firstOrFail();
 
-        $sale = Sale::checkout(
-            $cartItems,
-            $session,
-            $userId,
-            $this->customer_id,
-            $paymentMethod,
-            (float) $this->tax_rate,
-        );
+            if ($quote->status === self::STATUS_CONVERTI) {
+                throw ValidationException::withMessages([
+                    'quote' => 'Ce devis a déjà été converti en vente.',
+                ]);
+            }
 
-        $this->update(['status' => self::STATUS_CONVERTI, 'sale_id' => $sale->id]);
+            $cartItems = $quote->lines->map(fn (QuoteLine $line) => [
+                'product' => $line->product,
+                'quantity' => $line->quantity,
+            ])->all();
 
-        return $sale;
+            $sale = Sale::checkout(
+                $cartItems,
+                $session,
+                $userId,
+                $quote->customer_id,
+                $paymentMethod,
+                (float) $quote->tax_rate,
+            );
+
+            $quote->update(['status' => self::STATUS_CONVERTI, 'sale_id' => $sale->id]);
+
+            return $sale;
+        });
     }
 }

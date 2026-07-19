@@ -27,6 +27,8 @@ class AggregatorPaymentProvider implements PaymentProviderContract
         };
 
         $response = Http::withToken(config('services.payment.aggregator.api_key'))
+            ->connectTimeout(5)
+            ->timeout(15)
             ->post(rtrim((string) config('services.payment.aggregator.base_url'), '/').'/payments', [
                 'amount' => (float) $order->total,
                 'currency' => 'XAF',

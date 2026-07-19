@@ -3,7 +3,10 @@
 namespace App\Services\Ai;
 
 use App\Models\GeminiUsage;
+use App\Support\DatabaseLock;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Quota/coût sur les appels Gemini (Phase 7) — un plafond quotidien configurable
@@ -37,17 +40,33 @@ class GeminiUsageLimiter
         return $limit <= 0 || $this->usedToday() < $limit;
     }
 
-    /** Incrémente le compteur du jour de façon atomique (verrouillée, même principe que les autres compteurs de l'app). */
+    /**
+     * Incrémente le compteur du jour de façon atomique (verrouillée, même principe que les
+     * autres compteurs de l'app). L'appel Gemini a déjà eu lieu à ce stade : un verrou
+     * contesté ne doit jamais faire échouer la réponse déjà obtenue par l'utilisateur —
+     * on journalise et on continue plutôt que de propager l'erreur (léger sous-comptage
+     * du quota, largement préférable à casser le chatbot).
+     */
     public function recordCall(): void
     {
-        DB::transaction(function () {
-            $usage = GeminiUsage::where('date', today()->toDateString())->lockForUpdate()->first();
+        try {
+            DB::transaction(function () {
+                $usage = DatabaseLock::guard(
+                    fn () => GeminiUsage::where('date', today()->toDateString())->lockForUpdate()->first(),
+                    'gemini',
+                    'Quota Gemini en cours de mise à jour par une autre opération.',
+                );
 
-            if (! $usage) {
-                $usage = GeminiUsage::create(['date' => today()->toDateString(), 'calls' => 0]);
-            }
+                if (! $usage) {
+                    $usage = GeminiUsage::create(['date' => today()->toDateString(), 'calls' => 0]);
+                }
 
-            $usage->increment('calls');
-        });
+                $usage->increment('calls');
+            });
+        } catch (ValidationException $e) {
+            Log::warning('GeminiUsageLimiter::recordCall() : verrou contesté, appel non comptabilisé', [
+                'date' => today()->toDateString(),
+            ]);
+        }
     }
 }

@@ -5,8 +5,8 @@ namespace App\Services\Stock;
 use App\Models\Product;
 use App\Models\Reservation;
 use App\Models\StockMovement;
+use App\Support\DatabaseLock;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -21,42 +21,22 @@ use Illuminate\Validation\ValidationException;
  * réservé (réservations actives, table `reservations`), disponible = physique - réservé
  * (Product::availableStock()). La déduction physique n'a jamais lieu à la réservation,
  * seulement à deduct() — c'est-à-dire au paiement confirmé (ou à la remise, comptoir).
+ *
+ * RÈGLE ABSOLUE de l'application : tout mouvement de stock (vente, commande web, retour,
+ * transfert, réception fournisseur, ajustement d'inventaire) passe par ce service — jamais
+ * de StockMovement::create() direct ailleurs. C'est ce qui garantit que le verrou produit
+ * borné (lockProduct()) protège vraiment toute contention, pas seulement certains chemins.
  */
 class StockService
 {
-    /** Au-delà de ce délai d'attente sur un verrou produit contesté, on abandonne plutôt que de bloquer indéfiniment (et, avec le serveur de dev mono-worker, toute l'application avec). */
-    private const LOCK_TIMEOUT = '5s';
-
-    /**
-     * Verrouille la ligne produit (SELECT ... FOR UPDATE), avec un timeout borné : sans ça,
-     * un verrou contesté (ex. un achat en boutique sur le même article pendant une annulation
-     * côté comptoir) attend indéfiniment — PostgreSQL n'a par défaut ni lock_timeout ni
-     * statement_timeout, et le serveur de développement ne traite qu'une requête à la fois,
-     * donc un seul verrou bloqué gèle l'application entière pour tout le monde.
-     */
+    /** Verrouille la ligne produit (SELECT ... FOR UPDATE) avec un timeout borné — voir DatabaseLock. */
     private function lockProduct(int $productId): Product
     {
-        try {
-            // set_config(..., true) = portée LOCAL (annulée au COMMIT/ROLLBACK) — contrairement à SET,
-            // qui n'accepte pas de paramètre lié pour sa valeur, set_config() est une fonction normale.
-            DB::statement("SELECT set_config('lock_timeout', ?, true)", [self::LOCK_TIMEOUT]);
-
-            return Product::where('id', $productId)->lockForUpdate()->firstOrFail();
-        } catch (QueryException $e) {
-            if ($this->isLockTimeout($e)) {
-                throw ValidationException::withMessages([
-                    'stock' => "Ce produit est en cours de modification par une autre opération — réessayez dans quelques secondes.",
-                ]);
-            }
-
-            throw $e;
-        }
-    }
-
-    /** SQLSTATE 55P03 = lock_not_available (PostgreSQL), déclenché par le lock_timeout ci-dessus. */
-    private function isLockTimeout(QueryException $e): bool
-    {
-        return $e->getCode() === '55P03' || str_contains($e->getMessage(), 'lock timeout');
+        return DatabaseLock::guard(
+            fn () => Product::where('id', $productId)->lockForUpdate()->firstOrFail(),
+            'stock',
+            "Ce produit est en cours de modification par une autre opération — réessayez dans quelques secondes.",
+        );
     }
 
     /**
@@ -169,7 +149,7 @@ class StockService
         });
     }
 
-    /** Réintègre du stock physique (retour client, retour fournisseur, etc.). */
+    /** Réintègre du stock physique (retour client, retour de commande web, etc.). */
     public function reintegrate(
         Product $product,
         float $quantity,
@@ -191,6 +171,112 @@ class StockService
                 'subtype' => $subtype,
                 'quantity' => $quantity,
                 'reason' => $reason ?? 'Réintégration',
+                'reference_type' => $reference ? $reference::class : null,
+                'reference_id' => $reference?->id,
+                'user_id' => $userId,
+            ]);
+        });
+    }
+
+    /**
+     * Sort du stock physique pour une raison arbitraire (transfert, retour fournisseur,
+     * etc.) — contrairement à reintegrate(), vérifie la disponibilité avant d'agir : on
+     * ne peut pas faire sortir plus que ce qui est disponible.
+     */
+    public function withdraw(
+        Product $product,
+        float $quantity,
+        ?Model $reference = null,
+        ?int $userId = null,
+        ?string $reason = null,
+        ?string $subtype = null,
+        ?int $lotId = null,
+        ?int $warehouseId = null,
+    ): StockMovement {
+        return DB::transaction(function () use ($product, $quantity, $reference, $userId, $reason, $subtype, $lotId, $warehouseId) {
+            $locked = $this->lockProduct($product->id);
+
+            $available = $locked->availableStock();
+            if ($available < $quantity) {
+                throw ValidationException::withMessages([
+                    'stock' => "Stock insuffisant pour {$locked->name} (disponible : ".rtrim(rtrim(number_format($available, 2, '.', ''), '0'), '.').').',
+                ]);
+            }
+
+            return StockMovement::create([
+                'product_id' => $locked->id,
+                'warehouse_id' => $warehouseId,
+                'lot_id' => $lotId,
+                'type' => StockMovement::TYPE_SORTIE,
+                'subtype' => $subtype,
+                'quantity' => -$quantity,
+                'reason' => $reason ?? 'Sortie de stock',
+                'reference_type' => $reference ? $reference::class : null,
+                'reference_id' => $reference?->id,
+                'user_id' => $userId,
+            ]);
+        });
+    }
+
+    /**
+     * Mouvement d'ajustement signé (écart d'inventaire, correction manuelle) — verrouillé
+     * pour la cohérence mais SANS contrôle de disponibilité : un ajustement corrige la
+     * vérité du stock (physique constaté), il ne "dépense" pas un stock supposé disponible,
+     * donc un delta négatif est légitime même s'il dépasse le disponible calculé.
+     */
+    public function adjust(
+        Product $product,
+        float $delta,
+        ?Model $reference = null,
+        ?int $userId = null,
+        ?string $reason = null,
+        ?string $subtype = null,
+        ?int $warehouseId = null,
+    ): StockMovement {
+        return DB::transaction(function () use ($product, $delta, $reference, $userId, $reason, $subtype, $warehouseId) {
+            $this->lockProduct($product->id);
+
+            return StockMovement::create([
+                'product_id' => $product->id,
+                'warehouse_id' => $warehouseId,
+                'type' => StockMovement::TYPE_AJUSTEMENT,
+                'subtype' => $subtype,
+                'quantity' => $delta,
+                'reason' => $reason ?? 'Ajustement',
+                'reference_type' => $reference ? $reference::class : null,
+                'reference_id' => $reference?->id,
+                'user_id' => $userId,
+            ]);
+        });
+    }
+
+    /**
+     * Réception fournisseur : verrouille le produit, recalcule le CUMP (Product::applyCump())
+     * PUIS écrit l'entrée — sous le MÊME verrou, pour que deux réceptions concurrentes du
+     * même produit ne produisent jamais un CUMP corrompu (lecture-puis-écriture non atomique
+     * sinon : la seconde transaction écraserait le résultat de la première avec une base de
+     * calcul périmée).
+     */
+    public function receivePurchase(
+        Product $product,
+        float $quantity,
+        float $unitCost,
+        ?Model $reference = null,
+        ?int $userId = null,
+        ?string $reason = null,
+        ?int $warehouseId = null,
+    ): StockMovement {
+        return DB::transaction(function () use ($product, $quantity, $unitCost, $reference, $userId, $reason, $warehouseId) {
+            $locked = $this->lockProduct($product->id);
+            $locked->applyCump($quantity, $unitCost);
+
+            return StockMovement::create([
+                'product_id' => $locked->id,
+                'warehouse_id' => $warehouseId,
+                'type' => StockMovement::TYPE_ENTREE,
+                'quantity' => $quantity,
+                'unit_cost' => $unitCost,
+                'reason' => $reason ?? 'Réception',
                 'reference_type' => $reference ? $reference::class : null,
                 'reference_id' => $reference?->id,
                 'user_id' => $userId,

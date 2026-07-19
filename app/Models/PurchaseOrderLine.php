@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Stock\StockService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
@@ -56,16 +57,14 @@ class PurchaseOrderLine extends Model
         DB::transaction(function () use ($quantity, $byUserId, $reason) {
             $stockQuantity = $this->product->toStockQuantity($quantity);
 
-            StockMovement::create([
-                'product_id' => $this->product_id,
-                'type' => StockMovement::TYPE_SORTIE,
-                'subtype' => StockMovement::SUBTYPE_RETOUR_FOURNISSEUR,
-                'quantity' => -$stockQuantity,
-                'reason' => $reason ?? 'Retour fournisseur — commande #'.$this->purchase_order_id,
-                'reference_type' => PurchaseOrder::class,
-                'reference_id' => $this->purchase_order_id,
-                'user_id' => $byUserId,
-            ]);
+            app(StockService::class)->withdraw(
+                product: $this->product,
+                quantity: $stockQuantity,
+                reference: $this->purchaseOrder,
+                userId: $byUserId,
+                reason: $reason ?? 'Retour fournisseur — commande #'.$this->purchase_order_id,
+                subtype: StockMovement::SUBTYPE_RETOUR_FOURNISSEUR,
+            );
 
             $this->update(['returned_quantity' => (float) $this->returned_quantity + $quantity]);
         });
