@@ -40,6 +40,7 @@ class RoleSeeder extends Seeder
             'caisse.encaisser', 'caisse.cloturer', 'caisse.journal',
             'clients.voir', 'clients.gerer',
             'ecommerce.commandes',
+            'sav.gerer',
             'ia.chatbot',
         ]);
     }

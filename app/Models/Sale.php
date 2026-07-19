@@ -16,6 +16,7 @@ class Sale extends Model
         'cash_register_session_id', 'user_id', 'customer_id',
         'subtotal', 'tax_rate', 'tax_amount', 'total', 'payment_method', 'status',
         'payment_status', 'due_date', 'paid_amount', 'amount_tendered', 'change_due', 'cancelled_at',
+        'loyalty_points_redeemed', 'loyalty_discount',
     ];
 
     protected $casts = [
@@ -26,6 +27,7 @@ class Sale extends Model
         'paid_amount' => 'decimal:2',
         'amount_tendered' => 'decimal:2',
         'change_due' => 'decimal:2',
+        'loyalty_discount' => 'decimal:2',
         'due_date' => 'datetime',
         'cancelled_at' => 'datetime',
     ];
@@ -83,8 +85,9 @@ class Sale extends Model
         string $paymentMethod,
         float $taxRate,
         ?float $amountTendered = null,
+        int $loyaltyPointsToRedeem = 0,
     ): self {
-        return DB::transaction(function () use ($cartItems, $session, $userId, $customerId, $paymentMethod, $taxRate, $amountTendered) {
+        return DB::transaction(function () use ($cartItems, $session, $userId, $customerId, $paymentMethod, $taxRate, $amountTendered, $loyaltyPointsToRedeem) {
             foreach ($cartItems as $item) {
                 $item['product']->assertValidSaleQuantity((float) $item['quantity']);
             }
@@ -97,7 +100,20 @@ class Sale extends Model
                 0.0
             );
             $taxAmount = round($subtotal * ($taxRate / 100), 2);
-            $total = $subtotal + $taxAmount;
+
+            $loyaltyDiscount = 0.0;
+            if ($loyaltyPointsToRedeem > 0) {
+                if (! $customer) {
+                    throw ValidationException::withMessages(['loyalty' => 'Un client est requis pour utiliser des points de fidélité.']);
+                }
+                $availablePoints = $customer->loyaltyPoints();
+                if ($loyaltyPointsToRedeem > $availablePoints) {
+                    throw ValidationException::withMessages(['loyalty' => "Ce client n'a que {$availablePoints} point(s) de fidélité disponible(s)."]);
+                }
+                $loyaltyDiscount = round($loyaltyPointsToRedeem * (float) config('company.loyalty.redeem_value'), 2);
+            }
+
+            $total = max(0, $subtotal + $taxAmount - $loyaltyDiscount);
 
             $isCredit = $paymentMethod === 'credit';
 
@@ -133,6 +149,8 @@ class Sale extends Model
                 'paid_amount' => $isCredit ? 0 : $total,
                 'amount_tendered' => $amountTendered,
                 'change_due' => $changeDue,
+                'loyalty_points_redeemed' => $loyaltyPointsToRedeem,
+                'loyalty_discount' => $loyaltyDiscount,
             ]);
 
             $stockService = app(\App\Services\Stock\StockService::class);
@@ -146,6 +164,7 @@ class Sale extends Model
                     'lot_id' => $lotId,
                     'quantity' => $item['quantity'],
                     'unit_price' => $product->priceFor($customer),
+                    'serial_number' => $item['serial_number'] ?? null,
                 ]);
 
                 AnomalyDetector::checkSaleLine($line, $product);
@@ -162,6 +181,19 @@ class Sale extends Model
                     lotId: $lotId,
                 );
             }
+
+            if ($loyaltyPointsToRedeem > 0) {
+                LoyaltyPointMovement::create([
+                    'customer_id' => $customer->id,
+                    'points' => -$loyaltyPointsToRedeem,
+                    'reason' => 'Utilisés — vente #'.$sale->id,
+                    'reference_type' => self::class,
+                    'reference_id' => $sale->id,
+                    'user_id' => $userId,
+                ]);
+            }
+
+            LoyaltyPointMovement::earnForSale($sale, $customer, $userId);
 
             return $sale;
         });

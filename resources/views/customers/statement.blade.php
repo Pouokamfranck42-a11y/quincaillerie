@@ -16,6 +16,13 @@
             <div class="lbl"><i class="bi bi-wallet2"></i> Crédit disponible</div>
             <div class="val">{{ number_format($customer->availableCredit(), 0, ',', ' ') }}</div>
         </div>
+        @if (config('company.loyalty.enabled'))
+            <div class="stat-tile">
+                <div class="lbl"><i class="bi bi-star"></i> Points fidélité</div>
+                <div class="val">{{ $customer->loyaltyPoints() }}</div>
+                <div class="sub">≈ {{ number_format($customer->loyaltyPoints() * (float) config('company.loyalty.redeem_value'), 0, ',', ' ') }} FCFA</div>
+            </div>
+        @endif
     </div>
 
     <div class="card">

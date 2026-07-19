@@ -13,7 +13,7 @@ class Product extends Model
     protected $fillable = [
         'reference', 'name', 'brand', 'description', 'photo_path', 'category_id', 'supplier_id', 'supplier_sku',
         'purchase_price', 'sale_price', 'pro_price', 'barcode', 'location', 'unit', 'sold_by_cut', 'cut_step',
-        'sale_unit', 'sale_unit_factor', 'purchase_unit', 'purchase_unit_factor',
+        'sale_unit', 'sale_unit_factor', 'purchase_unit', 'purchase_unit_factor', 'warranty_months',
         'low_stock_threshold', 'security_stock', 'max_stock', 'reorder_point', 'tracks_lots', 'active',
         'product_family_id', 'variant_attributes', 'published_online',
     ];

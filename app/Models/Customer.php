@@ -73,6 +73,17 @@ class Customer extends Model implements AuthenticatableContract, CanResetPasswor
         return max(0, (float) $this->credit_limit - $this->outstandingBalance());
     }
 
+    public function loyaltyPointMovements()
+    {
+        return $this->hasMany(LoyaltyPointMovement::class);
+    }
+
+    /** Solde de points — jamais stocké, toujours recalculé depuis le ledger (même principe que Product::currentStock()). */
+    public function loyaltyPoints(): int
+    {
+        return (int) $this->loyaltyPointMovements()->sum('points');
+    }
+
     /** Métriques RFM simplifiées, utilisées pour la segmentation IA. */
     public function rfmSummary(): array
     {

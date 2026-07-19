@@ -6,7 +6,7 @@
         <a href="{{ route('chatbot.index') }}" class="{{ request()->routeIs('chatbot.*') ? 'active' : '' }}"><i class="bi bi-robot"></i> Assistant IA</a>
     @endcan
 
-    @if (auth()->user()->canAny(['caisse.encaisser', 'ventes.creer', 'ventes.historique', 'clients.voir', 'ecommerce.commandes']))
+    @if (auth()->user()->canAny(['caisse.encaisser', 'ventes.creer', 'ventes.historique', 'clients.voir', 'ecommerce.commandes', 'sav.gerer']))
         <div class="sidebar-section">Vente</div>
         @can('caisse.encaisser')
             <a href="{{ route('pos.index') }}" class="{{ request()->routeIs('pos.*') ? 'active' : '' }}"><i class="bi bi-cash-coin"></i> Caisse (POS)</a>
@@ -22,6 +22,9 @@
         @endcan
         @can('ecommerce.commandes')
             <a href="{{ route('online-orders.index') }}" class="{{ request()->routeIs('online-orders.*') ? 'active' : '' }}"><i class="bi bi-globe2"></i> Commandes en ligne</a>
+        @endcan
+        @can('sav.gerer')
+            <a href="{{ route('service-tickets.index') }}" class="{{ request()->routeIs('service-tickets.*') ? 'active' : '' }}"><i class="bi bi-tools"></i> SAV</a>
         @endcan
     @endif
 

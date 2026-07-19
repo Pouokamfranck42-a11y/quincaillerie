@@ -197,6 +197,10 @@ class Order extends Model
                 'sale_id' => $sale->id,
             ]);
 
+            // Même règle de gain que le comptoir (Sale::checkout()) — un seul endroit calcule
+            // combien de points une vente rapporte, qu'elle vienne du web ou de la caisse.
+            LoyaltyPointMovement::earnForSale($sale, $this->customer, $userId);
+
             return $this->fresh();
         });
     }

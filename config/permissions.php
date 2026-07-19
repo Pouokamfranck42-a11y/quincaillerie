@@ -96,6 +96,13 @@ return [
         ],
     ],
 
+    'sav' => [
+        'label' => 'SAV / garantie',
+        'permissions' => [
+            'sav.gerer' => 'Ouvrir et résoudre les dossiers SAV (retours, réparations, échanges)',
+        ],
+    ],
+
     'ia' => [
         'label' => 'Intelligence artificielle',
         'permissions' => [

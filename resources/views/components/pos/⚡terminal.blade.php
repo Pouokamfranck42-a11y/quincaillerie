@@ -28,6 +28,14 @@ new class extends Component
 
     public ?int $lastAddedProductId = null;
 
+    public int $loyaltyPointsToRedeem = 0;
+
+    /** Les points appartiennent à un client précis — en changer annule tout rachat en cours. */
+    public function updatedCustomerId(): void
+    {
+        $this->loyaltyPointsToRedeem = 0;
+    }
+
     public function mount(CashRegisterSession $session): void
     {
         $this->sessionId = $session->id;
@@ -164,6 +172,27 @@ new class extends Component
         return $this->subtotal() + $this->taxAmount();
     }
 
+    #[Computed]
+    public function loyaltyPointsAvailable(): int
+    {
+        return $this->selectedCustomer()?->loyaltyPoints() ?? 0;
+    }
+
+    #[Computed]
+    public function loyaltyDiscount(): float
+    {
+        $points = min($this->loyaltyPointsToRedeem, $this->loyaltyPointsAvailable());
+
+        return round($points * (float) config('company.loyalty.redeem_value'), 2);
+    }
+
+    /** Ce que le client paie réellement — total brut moins la réduction fidélité, jamais négatif. */
+    #[Computed]
+    public function finalTotal(): float
+    {
+        return max(0.0, $this->total() - $this->loyaltyDiscount());
+    }
+
     /** Monnaie à rendre — pertinent uniquement en espèces, une fois un montant reçu saisi. */
     #[Computed]
     public function changeDue(): float
@@ -172,7 +201,7 @@ new class extends Component
             return 0.0;
         }
 
-        return max(0.0, round($this->amountTendered - $this->total(), 2));
+        return max(0.0, round($this->amountTendered - $this->finalTotal(), 2));
     }
 
     public function checkout(): void
@@ -216,6 +245,7 @@ new class extends Component
             $this->paymentMethod,
             $this->taxRate,
             $this->paymentMethod === 'especes' ? $this->amountTendered : null,
+            $this->loyaltyPointsToRedeem,
         );
 
         $invoice = Invoice::generateFor($sale);
@@ -224,6 +254,7 @@ new class extends Component
         $this->customerId = null;
         $this->paymentMethod = 'especes';
         $this->amountTendered = null;
+        $this->loyaltyPointsToRedeem = 0;
         session()->flash('success', 'Vente #'.$sale->id.' encaissée : '.number_format($sale->total, 0, ',', ' ').' FCFA.');
         session()->flash('auto_print', true);
         $this->redirectRoute('invoices.show', $invoice);
@@ -338,7 +369,21 @@ new class extends Component
             @if ($this->selectedCustomer()?->type === 'professionnel')
                 <div class="hint"><i class="bi bi-info-circle"></i> Tarif pro appliqué · crédit disponible : {{ number_format($this->selectedCustomer()->availableCredit(), 0, ',', ' ') }} FCFA</div>
             @endif
+            @if ($this->selectedCustomer() && config('company.loyalty.enabled') && $this->loyaltyPointsAvailable() > 0)
+                <div class="hint"><i class="bi bi-star"></i> {{ $this->loyaltyPointsAvailable() }} point(s) de fidélité disponible(s).</div>
+            @endif
         </div>
+
+        @if ($this->selectedCustomer() && config('company.loyalty.enabled') && $this->loyaltyPointsAvailable() > 0)
+            <div class="field">
+                <label for="loyaltyPointsToRedeem"><i class="bi bi-star me-1"></i>Points fidélité à utiliser</label>
+                <input type="number" id="loyaltyPointsToRedeem" step="1" min="0" max="{{ $this->loyaltyPointsAvailable() }}" wire:model.live="loyaltyPointsToRedeem">
+                @if ($this->loyaltyDiscount() > 0)
+                    <div class="hint"><i class="bi bi-tag"></i> Réduction : {{ number_format($this->loyaltyDiscount(), 0, ',', ' ') }} FCFA</div>
+                @endif
+                @error('loyalty') <div class="error">{{ $message }}</div> @enderror
+            </div>
+        @endif
 
         <div class="field">
             <label for="paymentMethod"><i class="bi bi-credit-card-2-front me-1"></i>Paiement</label>
@@ -357,8 +402,8 @@ new class extends Component
         @if ($paymentMethod === 'especes')
             <div class="field">
                 <label for="amountTendered"><i class="bi bi-cash me-1"></i>Montant reçu</label>
-                <input type="number" id="amountTendered" step="1" min="0" wire:model.live="amountTendered" placeholder="{{ number_format($this->total(), 0, ',', ' ') }}">
-                @if ($amountTendered !== null && $amountTendered >= $this->total())
+                <input type="number" id="amountTendered" step="1" min="0" wire:model.live="amountTendered" placeholder="{{ number_format($this->finalTotal(), 0, ',', ' ') }}">
+                @if ($amountTendered !== null && $amountTendered >= $this->finalTotal())
                     <div class="hint"><i class="bi bi-arrow-return-left"></i> Monnaie à rendre : <strong>{{ number_format($this->changeDue(), 0, ',', ' ') }} FCFA</strong></div>
                 @elseif ($amountTendered !== null)
                     <div class="hint" style="color:var(--crit, #DC2626)"><i class="bi bi-exclamation-triangle"></i> Montant insuffisant.</div>
@@ -369,7 +414,10 @@ new class extends Component
         <div class="cart-totals">
             <div class="row"><span>Sous-total</span><span>{{ number_format($this->subtotal(), 0, ',', ' ') }}</span></div>
             <div class="row"><span>TVA ({{ rtrim(rtrim(number_format($taxRate, 2), '0'), '.') }}%)</span><span>{{ number_format($this->taxAmount(), 0, ',', ' ') }}</span></div>
-            <div class="row total"><span>Total</span><span>{{ number_format($this->total(), 0, ',', ' ') }} FCFA</span></div>
+            @if ($this->loyaltyDiscount() > 0)
+                <div class="row"><span>Réduction fidélité</span><span>-{{ number_format($this->loyaltyDiscount(), 0, ',', ' ') }}</span></div>
+            @endif
+            <div class="row total"><span>Total</span><span>{{ number_format($this->finalTotal(), 0, ',', ' ') }} FCFA</span></div>
         </div>
 
         <button
@@ -377,7 +425,7 @@ new class extends Component
             class="btn btn-primary"
             style="width:100%; margin-top:14px"
             wire:click="checkout"
-            @disabled(empty($cart) || $this->hasOverstockedLine() || ($paymentMethod === 'especes' && $amountTendered !== null && $amountTendered < $this->total()))
+            @disabled(empty($cart) || $this->hasOverstockedLine() || ($paymentMethod === 'especes' && $amountTendered !== null && $amountTendered < $this->finalTotal()))
         >
             <i class="bi bi-cash-coin"></i> Marquer comme vendu
         </button>

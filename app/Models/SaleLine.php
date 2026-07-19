@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 
 class SaleLine extends Model
 {
-    protected $fillable = ['sale_id', 'product_id', 'lot_id', 'quantity', 'unit_price', 'returned_quantity'];
+    protected $fillable = ['sale_id', 'product_id', 'lot_id', 'quantity', 'unit_price', 'returned_quantity', 'serial_number'];
 
     protected $casts = [
         'quantity' => 'decimal:2',
@@ -29,6 +29,32 @@ class SaleLine extends Model
     public function lot()
     {
         return $this->belongsTo(ProductLot::class, 'lot_id');
+    }
+
+    public function serviceTickets()
+    {
+        return $this->hasMany(ServiceTicket::class);
+    }
+
+    /** Garantie encore valide ? Basée sur la date de vente + Product::warranty_months (null = pas de garantie déclarée). */
+    public function isUnderWarranty(): bool
+    {
+        $months = $this->product?->warranty_months;
+        if (! $months || ! $this->sale) {
+            return false;
+        }
+
+        return $this->sale->created_at->copy()->addMonths($months)->isFuture();
+    }
+
+    public function warrantyExpiresAt(): ?\Illuminate\Support\Carbon
+    {
+        $months = $this->product?->warranty_months;
+        if (! $months || ! $this->sale) {
+            return null;
+        }
+
+        return $this->sale->created_at->copy()->addMonths($months);
     }
 
     public function lineTotal(): float

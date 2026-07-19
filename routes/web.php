@@ -27,6 +27,7 @@ use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\ServiceTicketController;
 use App\Http\Controllers\Shop\AccountController as ShopAccountController;
 use App\Http\Controllers\Shop\CartController as ShopCartController;
 use App\Http\Controllers\Shop\CatalogController as ShopCatalogController;
@@ -86,6 +87,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/sales/{sale}/print', [SaleController::class, 'print'])->name('sales.print')->middleware('permission:ventes.historique');
     Route::post('/sales/{sale}/lines/{sale_line}/return', [SaleController::class, 'returnLine'])->name('sales.return-line')->middleware('permission:ventes.annuler');
     Route::post('/sales/{sale}/annuler', [SaleController::class, 'cancel'])->name('sales.cancel')->middleware('permission:ventes.annuler');
+
+    Route::middleware('permission:sav.gerer')->group(function () {
+        Route::get('/service-tickets', [ServiceTicketController::class, 'index'])->name('service-tickets.index');
+        Route::get('/sales/{sale}/lines/{sale_line}/service-tickets/create', [ServiceTicketController::class, 'create'])->name('service-tickets.create');
+        Route::post('/sales/{sale}/lines/{sale_line}/service-tickets', [ServiceTicketController::class, 'store'])->name('service-tickets.store');
+        Route::get('/service-tickets/{service_ticket}', [ServiceTicketController::class, 'show'])->name('service-tickets.show');
+        Route::post('/service-tickets/{service_ticket}/resolve', [ServiceTicketController::class, 'resolve'])->name('service-tickets.resolve');
+    });
     Route::post('/sales/{sale}/invoice', [InvoiceController::class, 'store'])->name('invoices.store')->middleware('permission:ventes.historique');
     Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show')->middleware('permission:ventes.historique');
 

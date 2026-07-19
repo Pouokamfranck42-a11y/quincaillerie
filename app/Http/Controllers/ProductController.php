@@ -197,6 +197,7 @@ class ProductController extends Controller
             'max_stock' => ['nullable', 'numeric', 'min:0'],
             'reorder_point' => ['nullable', 'numeric', 'min:0'],
             'tracks_lots' => ['sometimes', 'boolean'],
+            'warranty_months' => ['nullable', 'integer', 'min:0', 'max:120'],
             'published_online' => ['sometimes', 'boolean'],
             'variant_attrs' => ['sometimes', 'array'],
             'variant_attrs.*.key' => ['nullable', 'string', 'max:100'],

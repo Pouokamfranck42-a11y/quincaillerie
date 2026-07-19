@@ -25,4 +25,21 @@ return [
 
     /** Taux TVA camerounais standard cité dans le brief — appliqué seulement si vat_subject est vrai. */
     'vat_rate' => (float) env('COMPANY_VAT_RATE', 19.25),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Programme de fidélité (Phase 2)
+    |--------------------------------------------------------------------------
+    |
+    | earn_per_fcfa : FCFA dépensés pour gagner 1 point (1000 = 1 point tous les 1000 FCFA).
+    | redeem_value : valeur en FCFA d'1 point utilisé en réduction à l'encaissement.
+    | Uniquement sur les ventes réglées (pas à crédit tant que la créance n'est pas soldée,
+    | pas sur un client de passage sans fiche).
+    |
+    */
+    'loyalty' => [
+        'enabled' => (bool) env('LOYALTY_ENABLED', true),
+        'earn_per_fcfa' => (int) env('LOYALTY_EARN_PER_FCFA', 1000),
+        'redeem_value' => (float) env('LOYALTY_REDEEM_VALUE', 10),
+    ],
 ];

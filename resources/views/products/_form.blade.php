@@ -218,6 +218,12 @@
         Gérer par lots avec date de péremption (peinture, colle, produits chimiques…)
     </label>
 </div>
+<div class="field" style="max-width:220px">
+    <label for="warranty_months">Garantie (mois, optionnel)</label>
+    <input type="number" step="1" min="0" max="120" id="warranty_months" name="warranty_months" value="{{ old('warranty_months', $product->warranty_months ?? '') }}" placeholder="Ex : 12">
+    <div class="hint">Laisser vide si aucune garantie déclarée. Utilisé par le SAV pour vérifier automatiquement l'éligibilité.</div>
+    @error('warranty_months') <div class="error">{{ $message }}</div> @enderror
+</div>
 <div class="field">
     <label style="display:flex; align-items:center; gap:8px; font-weight:400;">
         <input type="checkbox" name="active" value="1" style="width:auto" @checked(old('active', $product->active ?? true))>
