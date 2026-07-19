@@ -81,4 +81,45 @@ class StockReportController extends Controller
             'abc' => $abc,
         ]);
     }
+
+    /** État du stock actuel, une ligne par produit — pour audit externe ou reprise dans un tableur. */
+    public function export()
+    {
+        $products = Product::with('category')->where('active', true)->orderBy('name')->get();
+
+        $stream = fopen('php://temp', 'r+');
+        fputcsv($stream, ['reference', 'name', 'category', 'unit', 'stock_actuel', 'seuil_alerte', 'stock_max', 'valeur_stock', 'statut'], ';');
+
+        foreach ($products as $product) {
+            $stock = $product->currentStock();
+            $status = match (true) {
+                $stock <= 0 => 'rupture',
+                $stock <= (float) $product->low_stock_threshold => 'stock_bas',
+                $product->isOverstock() => 'surstock',
+                $product->isDormant() => 'dormant',
+                default => 'ok',
+            };
+
+            fputcsv($stream, [
+                $product->reference,
+                $product->name,
+                $product->category?->name,
+                $product->unit,
+                rtrim(rtrim(number_format($stock, 2, '.', ''), '0'), '.'),
+                rtrim(rtrim(number_format((float) $product->low_stock_threshold, 2, '.', ''), '0'), '.'),
+                $product->max_stock !== null ? rtrim(rtrim(number_format((float) $product->max_stock, 2, '.', ''), '0'), '.') : '',
+                number_format($stock * (float) $product->purchase_price, 2, '.', ''),
+                $status,
+            ], ';');
+        }
+
+        rewind($stream);
+        $csv = stream_get_contents($stream);
+        fclose($stream);
+
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="etat-stock-'.now()->format('Y-m-d').'.csv"',
+        ]);
+    }
 }

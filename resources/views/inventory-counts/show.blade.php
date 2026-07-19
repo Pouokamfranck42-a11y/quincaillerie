@@ -11,6 +11,22 @@
         @endif
     </div>
 
+    @if ($inventoryCount->status === 'in_progress')
+        <div class="card">
+            <div class="card-head"><h2><i class="bi bi-file-earmark-arrow-up"></i> Import en masse (scanner, tableur)</h2></div>
+            <p class="mt-0">Pour un comptage fait au scanner ou sur tableur plutôt que ligne par ligne ci-dessous.</p>
+            @error('counts_file') <div class="alert alert-crit"><i class="bi bi-exclamation-triangle-fill"></i> <span>{{ $message }}</span></div> @enderror
+            <div class="flex" style="align-items:flex-end; gap:12px">
+                <a href="{{ route('inventory-counts.export-template', $inventoryCount) }}" class="btn btn-sm"><i class="bi bi-download"></i> Modèle à remplir</a>
+                <form method="POST" action="{{ route('inventory-counts.import-counts', $inventoryCount) }}" enctype="multipart/form-data" class="flex" style="align-items:flex-end; gap:8px">
+                    @csrf
+                    <input type="file" name="counts_file" accept=".csv,text/csv" required>
+                    <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-upload"></i> Importer</button>
+                </form>
+            </div>
+        </div>
+    @endif
+
     <div class="card">
         <form method="POST" action="{{ route('inventory-counts.update-lines', $inventoryCount) }}">
             @csrf

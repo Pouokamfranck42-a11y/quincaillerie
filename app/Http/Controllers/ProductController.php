@@ -28,6 +28,49 @@ class ProductController extends Controller
         return view('products.index', compact('products'));
     }
 
+    /** Export complet du catalogue — mêmes colonnes que le modèle d'import, pour rester réimportable tel quel. */
+    public function export()
+    {
+        $products = Product::with(['category', 'supplier', 'family'])
+            ->withSum('stockMovements as stock_quantity', 'quantity')
+            ->orderBy('name')
+            ->get();
+
+        $stream = fopen('php://temp', 'r+');
+        fputcsv($stream, [
+            'reference', 'name', 'brand', 'category', 'supplier', 'barcode', 'location', 'unit',
+            'stock_actuel', 'purchase_price', 'sale_price', 'pro_price', 'active', 'published_online',
+        ], ';');
+
+        foreach ($products as $product) {
+            fputcsv($stream, [
+                $product->reference,
+                $product->name,
+                $product->brand,
+                $product->category?->name,
+                $product->supplier?->name,
+                $product->barcode,
+                $product->location,
+                $product->unit,
+                rtrim(rtrim(number_format((float) ($product->stock_quantity ?? 0), 2, '.', ''), '0'), '.'),
+                number_format((float) $product->purchase_price, 2, '.', ''),
+                number_format((float) $product->sale_price, 2, '.', ''),
+                $product->pro_price !== null ? number_format((float) $product->pro_price, 2, '.', '') : '',
+                $product->active ? 'oui' : 'non',
+                $product->published_online ? 'oui' : 'non',
+            ], ';');
+        }
+
+        rewind($stream);
+        $csv = stream_get_contents($stream);
+        fclose($stream);
+
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="catalogue-'.now()->format('Y-m-d').'.csv"',
+        ]);
+    }
+
     public function create()
     {
         $categories = Category::orderBy('name')->get();

@@ -4,7 +4,11 @@
             <h1><i class="bi bi-people text-primary"></i> Clients</h1>
             <p>Fiches clients particuliers et professionnels.</p>
         </div>
-        <a href="{{ route('customers.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouveau client</a>
+        <div class="flex">
+            <a href="{{ route('customers.import') }}" class="btn"><i class="bi bi-file-earmark-arrow-up"></i> Importer</a>
+            <a href="{{ route('customers.export') }}" class="btn"><i class="bi bi-file-earmark-arrow-down"></i> Exporter (CSV)</a>
+            <a href="{{ route('customers.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouveau client</a>
+        </div>
     </div>
 
     <form method="GET" class="field">

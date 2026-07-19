@@ -10,6 +10,7 @@ use App\Http\Controllers\CashRegisterSessionController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\CustomerImportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DormantStockController;
 use App\Http\Controllers\InventoryCountController;
@@ -75,6 +76,12 @@ Route::middleware('auth')->group(function () {
     Route::resource('customers', CustomerController::class)->except('show')
         ->middlewareFor(['index'], 'permission:clients.voir')
         ->middlewareFor(['create', 'store', 'edit', 'update', 'destroy'], 'permission:clients.gerer');
+    Route::get('/customers/export', [CustomerController::class, 'export'])->name('customers.export')->middleware('permission:clients.voir');
+    Route::middleware('permission:clients.gerer')->group(function () {
+        Route::get('/customers/import', [CustomerImportController::class, 'create'])->name('customers.import');
+        Route::get('/customers/import/template', [CustomerImportController::class, 'template'])->name('customers.import.template');
+        Route::post('/customers/import', [CustomerImportController::class, 'store'])->name('customers.import.store');
+    });
     Route::get('/customers/{customer}/statement', [CustomerController::class, 'statement'])->name('customers.statement')->middleware('permission:clients.voir');
     Route::post('/customers/{customer}/sales/{sale}/payment', [CustomerController::class, 'recordPayment'])->name('customers.record-payment')->middleware('permission:clients.gerer');
     Route::post('/customers/{customer}/reset-password', [CustomerController::class, 'sendPasswordReset'])->name('customers.send-password-reset')->middleware('permission:clients.gerer');
@@ -130,6 +137,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/products/recognize-photo', [ProductRecognitionController::class, 'recognize'])->name('products.recognize-photo');
     });
 
+    // AVANT Route::resource('products', ...) : sinon GET /products/{product} (show) intercepterait
+    // "export" comme s'il s'agissait d'un identifiant de produit (les routes sont matchées dans
+    // l'ordre d'enregistrement).
+    Route::get('/products/export', [ProductController::class, 'export'])->name('products.export')->middleware('permission:produits.voir');
+
     Route::resource('products', ProductController::class)
         ->middlewareFor(['index', 'show'], 'permission:produits.voir')
         ->middlewareFor(['create', 'store'], 'permission:produits.creer')
@@ -172,10 +184,13 @@ Route::middleware('auth')->group(function () {
     Route::resource('inventory-counts', InventoryCountController::class)->only(['index', 'create', 'store', 'show'])->middleware('permission:stock.inventaire');
     Route::post('/inventory-counts/{inventory_count}/lines', [InventoryCountController::class, 'updateLines'])->name('inventory-counts.update-lines')->middleware('permission:stock.inventaire');
     Route::post('/inventory-counts/{inventory_count}/complete', [InventoryCountController::class, 'complete'])->name('inventory-counts.complete')->middleware('permission:stock.inventaire');
+    Route::get('/inventory-counts/{inventory_count}/export-template', [InventoryCountController::class, 'exportTemplate'])->name('inventory-counts.export-template')->middleware('permission:stock.inventaire');
+    Route::post('/inventory-counts/{inventory_count}/import-counts', [InventoryCountController::class, 'importCounts'])->name('inventory-counts.import-counts')->middleware('permission:stock.inventaire');
 
     // --- Pilotage ---
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index')->middleware('permission:rapports.voir');
     Route::get('/reports/stock', [StockReportController::class, 'index'])->name('reports.stock')->middleware('permission:rapports.voir');
+    Route::get('/reports/stock/export', [StockReportController::class, 'export'])->name('reports.stock.export')->middleware('permission:rapports.voir');
     Route::get('/reports/encours-clients', [CustomerCreditReportController::class, 'index'])->name('reports.customer-credit')->middleware('permission:rapports.voir');
     Route::get('/reports/cash-flow', [CashFlowReportController::class, 'index'])->name('reports.cash-flow')->middleware('permission:ia.previsions');
     Route::get('/export-comptable', [AccountingExportController::class, 'index'])->name('accounting-export.index')->middleware('permission:rapports.exporter');

@@ -31,6 +31,36 @@ class CustomerController extends Controller
         return view('customers.create');
     }
 
+    public function export()
+    {
+        $customers = Customer::orderBy('name')->get();
+
+        $stream = fopen('php://temp', 'r+');
+        fputcsv($stream, ['name', 'type', 'phone', 'email', 'address', 'niu', 'credit_limit', 'payment_terms_days'], ';');
+
+        foreach ($customers as $customer) {
+            fputcsv($stream, [
+                $customer->name,
+                $customer->type,
+                $customer->phone,
+                $customer->email,
+                $customer->address,
+                $customer->niu,
+                number_format((float) $customer->credit_limit, 2, '.', ''),
+                $customer->payment_terms_days,
+            ], ';');
+        }
+
+        rewind($stream);
+        $csv = stream_get_contents($stream);
+        fclose($stream);
+
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="clients-'.now()->format('Y-m-d').'.csv"',
+        ]);
+    }
+
     public function store(Request $request)
     {
         Customer::create($this->validated($request));

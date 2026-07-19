@@ -4,6 +4,7 @@
             <h1><i class="bi bi-bar-chart text-primary"></i> Rapports stock</h1>
             <p>Valorisation, rotation, analyse ABC — basé sur les 90 derniers jours de ventes.</p>
         </div>
+        <a href="{{ route('reports.stock.export') }}" class="btn"><i class="bi bi-file-earmark-arrow-down"></i> Exporter l'état du stock (CSV)</a>
     </div>
 
     <div class="stat-grid">
