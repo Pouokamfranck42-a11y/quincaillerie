@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\Rule;
 
 class CustomerController extends Controller
@@ -58,6 +59,22 @@ class CustomerController extends Controller
         $customer->delete();
 
         return redirect()->route('customers.index')->with('success', 'Client envoyé à la corbeille.');
+    }
+
+    /**
+     * Réinitialisation "par admin" (le client ne peut pas/plus accéder à son e-mail) :
+     * réutilise le même broker que le flux self-service de la boutique — le staff
+     * déclenche l'envoi, il ne choisit jamais le mot de passe à la place du client.
+     */
+    public function sendPasswordReset(Customer $customer)
+    {
+        if (blank($customer->email)) {
+            return back()->with('error', "Ce client n'a pas d'adresse e-mail enregistrée — renseignez-en une avant d'envoyer un lien.");
+        }
+
+        Password::broker('customers')->sendResetLink(['email' => $customer->email]);
+
+        return back()->with('success', 'Lien de réinitialisation envoyé à '.$customer->email.'.');
     }
 
     public function statement(Customer $customer)
